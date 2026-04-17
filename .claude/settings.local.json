@@ -9,7 +9,10 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/src/App.jsx)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/src/hooks/useExoplanets.js)",
       "Bash(curl -s http://localhost:5173/src/App.jsx)",
-      "Bash(curl -s http://localhost:5173/src/hooks/useExoplanets.js)"
+      "Bash(curl -s http://localhost:5173/src/hooks/useExoplanets.js)",
+      "Bash(curl -s -o /dev/null -w \"app=%{http_code} \" http://localhost:5173/src/App.jsx)",
+      "Bash(curl -s -o /dev/null -w \"starmap=%{http_code} \" http://localhost:5173/src/components/StarMap.jsx)",
+      "Bash(curl -s -o /dev/null -w \"classifier=%{http_code}\\\\n\" http://localhost:5173/src/utils/planetClassifier.js)"
     ]
   }
 }

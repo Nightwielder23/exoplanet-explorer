@@ -1,8 +1,15 @@
+import { useEffect, useState } from 'react';
 import { useExoplanets } from './hooks/useExoplanets';
+import StarMap from './components/StarMap';
 import './App.css';
 
 function App() {
   const { data, loading, error } = useExoplanets();
+  const [selectedPlanet, setSelectedPlanet] = useState(null);
+
+  useEffect(() => {
+    console.log('Selected planet:', selectedPlanet);
+  }, [selectedPlanet]);
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background font-body text-text-primary">
@@ -40,9 +47,10 @@ function App() {
           </div>
         )}
         {!loading && !error && data && (
-          <p className="font-display text-lg uppercase tracking-widest text-text-muted">
-            Map goes here
-          </p>
+          <StarMap
+            planets={data}
+            onPlanetClick={(planet) => setSelectedPlanet(planet)}
+          />
         )}
       </main>
     </div>

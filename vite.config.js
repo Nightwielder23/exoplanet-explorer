@@ -9,4 +9,13 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
+  server: {
+    proxy: {
+      '/api/nasa': {
+        target: 'https://exoplanetarchive.ipac.caltech.edu',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nasa/, '')
+      }
+    }
+  }
 })

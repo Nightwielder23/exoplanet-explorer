@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const API_URL =
-  'https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+pl_name,ra,dec,pl_masse,pl_rade,pl_orbper,sy_dist,disc_year,discoverymethod,st_spectype,pl_eqt+from+pscomppars+where+ra+is+not+null+and+dec+is+not+null&format=json';
+  '/api/nasa/TAP/sync?query=select+pl_name,ra,dec,pl_masse,pl_rade,pl_orbper,sy_dist,disc_year,discoverymethod,st_spectype,pl_eqt+from+pscomppars+where+ra+is+not+null+and+dec+is+not+null&format=json';
 
 let cachedData = null;
 let inflightRequest = null;
