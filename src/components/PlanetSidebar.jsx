@@ -5,6 +5,91 @@ import {
   getHabitabilityZone,
 } from '../utils/planetClassifier';
 
+const PLANET_VIZ = {
+  'Hot Jupiter': { radius: 32, swirl: true },
+  'Jupiter-like': { radius: 28 },
+  'Neptune-like': { radius: 22 },
+  'Super Earth': { radius: 18 },
+  'Earth-like': { radius: 18, centerTint: '#7ec8ff' },
+  'Sub Earth': { radius: 14 },
+  Unknown: { radius: 12 },
+};
+
+function shiftColor(hex, amount) {
+  const h = (hex || '#000000').replace('#', '');
+  const full = h.length === 3
+    ? h.split('').map((c) => c + c).join('')
+    : h.padEnd(6, '0').slice(0, 6);
+  const num = parseInt(full, 16);
+  let r = (num >> 16) & 0xff;
+  let g = (num >> 8) & 0xff;
+  let b = num & 0xff;
+  if (amount >= 0) {
+    r = Math.round(r + (255 - r) * amount);
+    g = Math.round(g + (255 - g) * amount);
+    b = Math.round(b + (255 - b) * amount);
+  } else {
+    const f = 1 + amount;
+    r = Math.round(r * f);
+    g = Math.round(g * f);
+    b = Math.round(b * f);
+  }
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+function PlanetGlyph({ type, color }) {
+  const viz = PLANET_VIZ[type] ?? PLANET_VIZ.Unknown;
+  const { radius, swirl, centerTint } = viz;
+  const idSuffix = type.replace(/\W+/g, '-').toLowerCase();
+  const gradId = `planet-grad-${idSuffix}`;
+  const glowId = `planet-glow-${idSuffix}`;
+  const light = centerTint ?? shiftColor(color, 0.45);
+  const dark = shiftColor(color, -0.35);
+  const swirlColor = shiftColor(color, 0.3);
+
+  return (
+    <svg viewBox="0 0 100 100" className="h-24 w-24" aria-hidden="true">
+      <defs>
+        <radialGradient id={gradId} cx="38%" cy="34%" r="68%">
+          <stop offset="0%" stopColor={light} />
+          <stop offset="100%" stopColor={dark} />
+        </radialGradient>
+        <filter id={glowId} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="4" />
+        </filter>
+      </defs>
+      <circle
+        cx="50"
+        cy="50"
+        r={radius}
+        fill={color}
+        opacity="0.55"
+        filter={`url(#${glowId})`}
+      />
+      <circle cx="50" cy="50" r={radius} fill={`url(#${gradId})`} />
+      {swirl && (
+        <g
+          stroke={swirlColor}
+          strokeOpacity="0.45"
+          strokeWidth="1"
+          strokeLinecap="round"
+          fill="none"
+        >
+          <path
+            d={`M ${50 - radius * 0.85} ${50 - radius * 0.25} Q 50 ${50 - radius * 0.4}, ${50 + radius * 0.85} ${50 - radius * 0.25}`}
+          />
+          <path
+            d={`M ${50 - radius * 0.95} ${50 + radius * 0.05} Q 50 ${50 + radius * 0.2}, ${50 + radius * 0.95} ${50 + radius * 0.05}`}
+          />
+          <path
+            d={`M ${50 - radius * 0.8} ${50 + radius * 0.35} Q 50 ${50 + radius * 0.5}, ${50 + radius * 0.8} ${50 + radius * 0.35}`}
+          />
+        </g>
+      )}
+    </svg>
+  );
+}
+
 function Row({ label, value }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border/40 py-2">
@@ -64,6 +149,9 @@ function PlanetSidebar({ planet, onClose }) {
 
       {p && (
         <div className="flex h-full flex-col overflow-y-auto px-6 py-6">
+          <div className="mb-2 flex justify-center">
+            <PlanetGlyph type={typeLabel} color={typeColor} />
+          </div>
           <h2
             className="pr-10 font-display text-2xl font-bold tracking-widest text-accent-cyan"
             style={
@@ -101,6 +189,18 @@ function PlanetSidebar({ planet, onClose }) {
             <Row label="Discovery Year" value={p.discoveryYear || 'Unknown'} />
             <Row label="Coordinates" value={coords} />
           </div>
+
+          {p.name && (
+            <a
+              href={`https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(p.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex items-center justify-center gap-1.5 self-start rounded border border-accent-cyan bg-surface-elevated px-3 py-1.5 font-display text-[11px] font-bold uppercase tracking-widest text-accent-cyan transition-colors hover:bg-accent-cyan hover:text-background"
+            >
+              <span>View on NASA Archive</span>
+              <span>↗</span>
+            </a>
+          )}
         </div>
       )}
     </aside>

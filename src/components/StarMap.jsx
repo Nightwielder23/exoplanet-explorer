@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { getPlanetColor, getHabitabilityZone } from '../utils/planetClassifier';
 
@@ -18,6 +18,7 @@ function StarMap({
   colorMode = 'type',
   selectedPlanet = null,
   highlightHZ = false,
+  resetZoomRef,
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -25,9 +26,11 @@ function StarMap({
   const tooltipRef = useRef(null);
   const sizeRef = useRef({ width: 0, height: 0 });
   const transformRef = useRef(d3.zoomIdentity);
+  const initialTransformRef = useRef(null);
   const draggingRef = useRef(false);
   const interactingRef = useRef(false);
   const hoveredPlanetRef = useRef(null);
+  const [cursorMode, setCursorMode] = useState('grab');
   const planetsRef = useRef([]);
   const colorByPlanetRef = useRef(new Map());
   const hzByPlanetRef = useRef(new Map());
@@ -294,6 +297,9 @@ function StarMap({
         hoveredPlanetRef.current = nearest;
         redraw();
       }
+      if (!draggingRef.current) {
+        setCursorMode(nearest ? 'crosshair' : 'grab');
+      }
       if (nearest) {
         tooltip
           .style('opacity', 1)
@@ -311,6 +317,7 @@ function StarMap({
         redraw();
       }
       tooltip.style('opacity', 0);
+      if (!draggingRef.current) setCursorMode('grab');
     };
 
     const handleClick = (event) => {
@@ -341,6 +348,7 @@ function StarMap({
       .on('zoom', (event) => {
         if (event.sourceEvent && event.sourceEvent.type === 'mousemove') {
           draggingRef.current = true;
+          setCursorMode('grabbing');
         }
         transformRef.current = event.transform;
         redraw();
@@ -350,6 +358,7 @@ function StarMap({
         redraw();
         setTimeout(() => {
           draggingRef.current = false;
+          setCursorMode(hoveredPlanetRef.current ? 'crosshair' : 'grab');
         }, 50);
       });
     d3overlay.call(zoom).on('dblclick.zoom', null);
@@ -375,7 +384,18 @@ function StarMap({
         const ty = (height - 180 * k) / 2;
         zoom.scaleExtent([k * 0.5, 20]);
         const initialTransform = d3.zoomIdentity.translate(tx, ty).scale(k);
+        initialTransformRef.current = initialTransform;
         d3overlay.call(zoom.transform, initialTransform);
+        if (resetZoomRef) {
+          resetZoomRef.current = () => {
+            const target = initialTransformRef.current;
+            if (!target) return;
+            d3overlay
+              .transition()
+              .duration(750)
+              .call(zoom.transform, target);
+          };
+        }
       }
       redraw();
     });
@@ -388,8 +408,9 @@ function StarMap({
       overlay.removeEventListener('mouseleave', handleMouseLeave);
       overlay.removeEventListener('click', handleClick);
       redrawRef.current = null;
+      if (resetZoomRef) resetZoomRef.current = null;
     };
-  }, []);
+  }, [resetZoomRef]);
 
   useEffect(() => {
     onPlanetClickRef.current = onPlanetClick;
@@ -441,7 +462,7 @@ function StarMap({
   return (
     <div ref={containerRef} className="fixed inset-0">
       <canvas ref={canvasRef} className="absolute inset-0 block" />
-      <div ref={overlayRef} className="absolute inset-0 z-10 cursor-grab" />
+      <div ref={overlayRef} className={`absolute inset-0 z-10 cursor-${cursorMode}`} />
       <div
         ref={tooltipRef}
         className="pointer-events-none fixed z-50 rounded border border-border bg-surface px-2 py-1 font-body text-xs text-text-primary opacity-0 transition-opacity"

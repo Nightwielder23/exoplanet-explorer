@@ -29,7 +29,7 @@ function LegendDot({ color }) {
   );
 }
 
-function ToggleButton({ active, onClick, children, variant = 'cyan' }) {
+function ToggleButton({ active, onClick, children, variant = 'cyan', title }) {
   const activeClass =
     variant === 'teal'
       ? 'bg-accent-teal text-background shadow-[0_0_10px_rgba(0,255,136,0.6)]'
@@ -38,6 +38,7 @@ function ToggleButton({ active, onClick, children, variant = 'cyan' }) {
     <button
       type="button"
       onClick={onClick}
+      title={title}
       className={`flex-1 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-widest transition-colors ${
         active
           ? activeClass
@@ -49,7 +50,13 @@ function ToggleButton({ active, onClick, children, variant = 'cyan' }) {
   );
 }
 
-function MapControls({ colorMode, onColorModeChange, highlightHZ, onHighlightHZChange }) {
+function MapControls({
+  colorMode,
+  onColorModeChange,
+  highlightHZ,
+  onHighlightHZChange,
+  resetZoom,
+}) {
   const legend = colorMode === 'habitability' ? HABITABILITY_LEGEND : TYPE_LEGEND;
 
   return (
@@ -58,12 +65,14 @@ function MapControls({ colorMode, onColorModeChange, highlightHZ, onHighlightHZC
         <ToggleButton
           active={colorMode === 'type'}
           onClick={() => onColorModeChange('type')}
+          title="Color planets by size category"
         >
           By Type
         </ToggleButton>
         <ToggleButton
           active={colorMode === 'habitability'}
           onClick={() => onColorModeChange('habitability')}
+          title="Color planets by temperature zone"
         >
           By Habitability
         </ToggleButton>
@@ -74,9 +83,21 @@ function MapControls({ colorMode, onColorModeChange, highlightHZ, onHighlightHZC
           variant="teal"
           active={highlightHZ}
           onClick={() => onHighlightHZChange(!highlightHZ)}
+          title="Highlight habitable zone planets"
         >
           Highlight HZ
         </ToggleButton>
+      </div>
+
+      <div className="mt-2 flex overflow-hidden rounded border border-border">
+        <button
+          type="button"
+          onClick={resetZoom}
+          title="Reset map to full sky view"
+          className="flex-1 bg-surface-elevated px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary transition-colors hover:text-accent-cyan"
+        >
+          Reset Zoom
+        </button>
       </div>
 
       <ul className="mt-3 flex flex-col gap-1.5">

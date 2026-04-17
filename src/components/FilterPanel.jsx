@@ -66,6 +66,14 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
     });
   };
 
+  const hasActiveFilters =
+    filters.planetType !== 'all' ||
+    filters.habitability !== 'all' ||
+    filters.discoveryMethod !== 'all' ||
+    filters.searchQuery !== '' ||
+    filters.minDistance !== 0 ||
+    filters.maxDistance !== 30000;
+
   return (
     <div
       className={`fixed left-0 top-1/2 z-30 -translate-y-1/2 transition-transform duration-300 ease-out ${
@@ -172,6 +180,13 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
           <span className="block rotate-90 whitespace-nowrap font-display text-xs font-bold uppercase tracking-widest">
             Filters
           </span>
+          {!isOpen && hasActiveFilters && (
+            <span
+              className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-accent-cyan"
+              style={{ boxShadow: '0 0 8px rgba(0, 212, 255, 1)' }}
+              aria-label="Filters active"
+            />
+          )}
         </button>
       </div>
     </div>

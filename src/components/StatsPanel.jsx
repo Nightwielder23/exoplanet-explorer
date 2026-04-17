@@ -77,7 +77,7 @@ function StatsPanel({ planets }) {
   }, [planets]);
 
   useEffect(() => {
-    if (!isOpen || !chartRef.current) return;
+    if (!chartRef.current) return;
     const svg = d3.select(chartRef.current);
     svg.selectAll('*').remove();
 
@@ -129,20 +129,36 @@ function StatsPanel({ planets }) {
       .attr('font-family', "'IBM Plex Mono', monospace")
       .attr('font-size', '10px')
       .text((d) => d[1].toLocaleString());
-  }, [isOpen, methodCounts]);
+  }, [methodCounts]);
 
   const avgDistanceLabel =
     summary.avgDistance != null
       ? `${summary.avgDistance.toLocaleString(undefined, { maximumFractionDigits: 1 })} pc`
       : '—';
 
+  const isFiltered = planets.length < 6160;
+
   return (
     <div className="flex flex-col items-end">
-      {isOpen && (
-        <div className="mb-2 w-80 rounded border border-border bg-surface p-3 shadow-2xl">
-          <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-widest text-accent-cyan">
-            Statistics
-          </h3>
+      <div
+        className="w-80 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
+        style={{
+          maxHeight: isOpen ? '500px' : '0px',
+          opacity: isOpen ? 1 : 0,
+        }}
+        aria-hidden={!isOpen}
+      >
+        <div className="mb-2 rounded border border-border bg-surface p-3 shadow-2xl">
+          <div className="mb-3 flex items-center gap-2">
+            <h3 className="font-display text-sm font-bold uppercase tracking-widest text-accent-cyan">
+              Statistics
+            </h3>
+            {isFiltered && (
+              <span className="rounded border border-accent-teal/60 px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-accent-teal">
+                Filtered
+              </span>
+            )}
+          </div>
 
           <div className="mb-3">
             <div className="mb-1 font-display text-[10px] uppercase tracking-widest text-text-secondary">
@@ -164,7 +180,7 @@ function StatsPanel({ planets }) {
             />
           </div>
         </div>
-      )}
+      </div>
 
       <button
         type="button"

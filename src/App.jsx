@@ -35,6 +35,48 @@ function App() {
   const settersRef = useRef({ setSelectedPlanet, setFilterOpen, setFilters });
   settersRef.current = { setSelectedPlanet, setFilterOpen, setFilters };
 
+  const resetZoomRef = useRef(null);
+  const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!data || data.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const planetName = params.get('planet');
+    if (!planetName) {
+      hasLoadedRef.current = true;
+      return;
+    }
+    const decoded = decodeURIComponent(planetName);
+    const match = data.find(
+      (p) => p.name && p.name.toLowerCase() === decoded.toLowerCase(),
+    );
+    if (match) {
+      setSelectedPlanet(match);
+      hasLoadedRef.current = true;
+    } else {
+      hasLoadedRef.current = true;
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+    const url = new URL(window.location.href);
+    if (selectedPlanet && selectedPlanet.name) {
+      url.searchParams.set('planet', selectedPlanet.name);
+    } else {
+      url.searchParams.delete('planet');
+    }
+    window.history.replaceState({}, '', url);
+  }, [selectedPlanet]);
+
+  useEffect(() => {
+    if (selectedPlanet && selectedPlanet.name) {
+      document.title = `${selectedPlanet.name} | Exoplanet Explorer`;
+    } else {
+      document.title = 'Exoplanet Explorer';
+    }
+  }, [selectedPlanet]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       const key = e.key;
@@ -106,7 +148,16 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background font-body text-text-primary">
-      <header className="relative z-50 flex items-center justify-between border-b border-border bg-surface px-6 py-4">
+      <header className="relative z-50 flex items-center justify-between overflow-hidden border-b border-border bg-surface px-6 py-4">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 right-0 h-px"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.8), transparent)',
+            animation: 'header-scan 6s linear infinite',
+          }}
+        />
         <div className="flex flex-col">
           <h1
             className="font-display text-2xl font-bold tracking-[0.2em] text-accent-cyan"
@@ -154,6 +205,7 @@ function App() {
             colorMode={colorMode}
             selectedPlanet={selectedPlanet}
             highlightHZ={highlightHZ}
+            resetZoomRef={resetZoomRef}
           />
         )}
       </main>
@@ -163,6 +215,7 @@ function App() {
         onColorModeChange={setColorMode}
         highlightHZ={highlightHZ}
         onHighlightHZChange={(val) => setHighlightHZ(val)}
+        resetZoom={() => resetZoomRef.current?.()}
       />
 
       <div className="relative z-40">
