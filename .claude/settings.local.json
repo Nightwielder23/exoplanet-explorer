@@ -3,7 +3,13 @@
     "allow": [
       "Bash(npm create *)",
       "Bash(npm install *)",
-      "Bash(npx tailwindcss *)"
+      "Bash(npx tailwindcss *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/src/App.jsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/src/hooks/useExoplanets.js)",
+      "Bash(curl -s http://localhost:5173/src/App.jsx)",
+      "Bash(curl -s http://localhost:5173/src/hooks/useExoplanets.js)"
     ]
   }
 }
