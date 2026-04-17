@@ -48,7 +48,7 @@ function Select({ value, onChange, options }) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded border border-border bg-surface-elevated px-2 py-1.5 font-body text-sm text-text-primary focus:border-accent-cyan focus:outline-none"
+      className="w-full cursor-pointer rounded border border-border bg-surface-elevated px-2 py-1.5 font-body text-sm text-text-primary focus:border-accent-cyan focus:outline-none focus:ring-1 focus:ring-accent-cyan"
     >
       {options.map((opt) => (
         <option key={opt} value={opt}>
@@ -76,7 +76,7 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
 
   return (
     <div
-      className={`fixed left-0 top-1/2 z-30 -translate-y-1/2 transition-transform duration-300 ease-out ${
+      className={`fixed left-0 top-1/2 z-30 -translate-y-1/2 transition-all duration-300 ease-in-out ${
         isOpen ? 'translate-x-0' : '-translate-x-[220px]'
       }`}
     >
@@ -95,7 +95,7 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
                 value={filters.searchQuery}
                 onChange={(e) => onFilterChange('searchQuery', e.target.value)}
                 placeholder="Planet name..."
-                className="w-full rounded border border-border bg-surface-elevated px-2 py-1.5 font-body text-sm text-text-primary placeholder:text-text-muted focus:border-accent-cyan focus:outline-none"
+                className="w-full rounded border border-border bg-surface-elevated px-2 py-1.5 font-body text-sm text-text-primary placeholder:text-text-muted focus:border-accent-cyan focus:outline-none focus:ring-1 focus:ring-accent-cyan"
               />
             </div>
 
@@ -139,6 +139,7 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
                     const v = Math.min(Number(e.target.value), filters.maxDistance);
                     onFilterChange('minDistance', v);
                   }}
+                  className="cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-cyan"
                 />
                 <input
                   type="range"
@@ -150,6 +151,7 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
                     const v = Math.max(Number(e.target.value), filters.minDistance);
                     onFilterChange('maxDistance', v);
                   }}
+                  className="cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-cyan"
                 />
               </div>
               <div className="mt-1 font-body text-xs text-text-muted">

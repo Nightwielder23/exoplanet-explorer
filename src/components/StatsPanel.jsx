@@ -10,7 +10,7 @@ const shortMethod = (name) => METHOD_LABEL_OVERRIDES[name] ?? name;
 
 function StatCard({ label, value }) {
   return (
-    <div className="rounded border border-border bg-surface-elevated px-2 py-1.5">
+    <div className="rounded border border-border bg-surface-elevated px-2 py-1.5 transition-all duration-150 hover:-translate-y-0.5 hover:bg-surface">
       <div className="font-display text-[9px] uppercase tracking-widest text-text-muted">
         {label}
       </div>
@@ -24,6 +24,19 @@ function StatCard({ label, value }) {
 function StatsPanel({ planets }) {
   const [isOpen, setIsOpen] = useState(false);
   const chartRef = useRef(null);
+  const timelineRef = useRef(null);
+
+  const yearCounts = useMemo(() => {
+    const counts = new Map();
+    for (const p of planets) {
+      const y = p.discoveryYear;
+      if (y == null || !Number.isFinite(y)) continue;
+      counts.set(y, (counts.get(y) || 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, count]) => ({ year, count }));
+  }, [planets]);
 
   const methodCounts = useMemo(() => {
     const counts = new Map();
@@ -131,6 +144,104 @@ function StatsPanel({ planets }) {
       .text((d) => d[1].toLocaleString());
   }, [methodCounts]);
 
+  useEffect(() => {
+    if (!timelineRef.current) return;
+    const svg = d3.select(timelineRef.current);
+    svg.selectAll('*').remove();
+
+    const width = 272;
+    const height = 60;
+    const margin = { top: 6, right: 8, bottom: 14, left: 8 };
+    const innerW = width - margin.left - margin.right;
+    const innerH = height - margin.top - margin.bottom;
+
+    svg
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'none')
+      .attr('width', '100%')
+      .attr('height', height);
+
+    if (yearCounts.length < 2) return;
+
+    const minYear = yearCounts[0].year;
+    const maxYear = yearCounts[yearCounts.length - 1].year;
+    const maxCount = d3.max(yearCounts, (d) => d.count) ?? 1;
+
+    const xScale = d3
+      .scaleLinear()
+      .domain([minYear, maxYear])
+      .range([margin.left, margin.left + innerW]);
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, maxCount])
+      .range([margin.top + innerH, margin.top]);
+
+    const line = d3
+      .line()
+      .x((d) => xScale(d.year))
+      .y((d) => yScale(d.count))
+      .curve(d3.curveMonotoneX);
+
+    const area = d3
+      .area()
+      .x((d) => xScale(d.year))
+      .y0(margin.top + innerH)
+      .y1((d) => yScale(d.count))
+      .curve(d3.curveMonotoneX);
+
+    svg
+      .append('path')
+      .datum(yearCounts)
+      .attr('fill', '#00d4ff')
+      .attr('opacity', 0.15)
+      .attr('d', area);
+
+    svg
+      .append('path')
+      .datum(yearCounts)
+      .attr('fill', 'none')
+      .attr('stroke', '#00d4ff')
+      .attr('stroke-width', 1.25)
+      .attr('stroke-linecap', 'round')
+      .attr('stroke-linejoin', 'round')
+      .attr('d', line);
+
+    const peak = yearCounts.reduce((best, d) =>
+      d.count > best.count ? d : best,
+    );
+
+    const peakDot = svg
+      .append('circle')
+      .attr('cx', xScale(peak.year))
+      .attr('cy', yScale(peak.count))
+      .attr('r', 2.5)
+      .attr('fill', '#ffaa00')
+      .style('filter', 'drop-shadow(0 0 3px rgba(255, 170, 0, 0.8))');
+    peakDot
+      .append('title')
+      .text(`PEAK: ${peak.year} (${peak.count.toLocaleString()} planets)`);
+
+    svg
+      .append('text')
+      .attr('x', margin.left)
+      .attr('y', height - 2)
+      .attr('fill', '#3d6080')
+      .attr('font-family', "'IBM Plex Mono', monospace")
+      .attr('font-size', '9px')
+      .attr('text-anchor', 'start')
+      .text(minYear);
+
+    svg
+      .append('text')
+      .attr('x', margin.left + innerW)
+      .attr('y', height - 2)
+      .attr('fill', '#3d6080')
+      .attr('font-family', "'IBM Plex Mono', monospace")
+      .attr('font-size', '9px')
+      .attr('text-anchor', 'end')
+      .text(maxYear);
+  }, [yearCounts]);
+
   const avgDistanceLabel =
     summary.avgDistance != null
       ? `${summary.avgDistance.toLocaleString(undefined, { maximumFractionDigits: 1 })} pc`
@@ -141,7 +252,7 @@ function StatsPanel({ planets }) {
   return (
     <div className="flex flex-col items-end">
       <div
-        className="w-80 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
+        className="w-80 overflow-hidden transition-all duration-300 ease-in-out"
         style={{
           maxHeight: isOpen ? '500px' : '0px',
           opacity: isOpen ? 1 : 0,
@@ -165,6 +276,13 @@ function StatsPanel({ planets }) {
               Discovery Methods (Top 5)
             </div>
             <svg ref={chartRef} />
+          </div>
+
+          <div className="mb-3">
+            <div className="mb-1 font-display text-[10px] uppercase tracking-widest text-text-secondary">
+              Discoveries By Year
+            </div>
+            <svg ref={timelineRef} className="block w-full" />
           </div>
 
           <div className="grid grid-cols-2 gap-2">

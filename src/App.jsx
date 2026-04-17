@@ -5,6 +5,8 @@ import PlanetSidebar from './components/PlanetSidebar';
 import FilterPanel from './components/FilterPanel';
 import MapControls from './components/MapControls';
 import StatsPanel from './components/StatsPanel';
+import MiniMap from './components/MiniMap';
+import ComparePanel from './components/ComparePanel';
 import { getPlanetType, getHabitabilityZone } from './utils/planetClassifier';
 import './App.css';
 
@@ -24,6 +26,9 @@ const DEFAULT_FILTERS = {
   searchQuery: '',
 };
 
+const TWINKLE_COLORS = ['#ffffff', '#00d4ff', '#00ff88', '#ffaa00', '#aa44ff'];
+const MAX_TWINKLE_STARS = 40;
+
 function App() {
   const { data, loading, error } = useExoplanets();
   const [selectedPlanet, setSelectedPlanet] = useState(null);
@@ -31,12 +36,107 @@ function App() {
   const [highlightHZ, setHighlightHZ] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [transformState, setTransformState] = useState(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [featuredPlanet, setFeaturedPlanet] = useState(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [comparePlanets, setComparePlanets] = useState([]);
+  const [skeletonMounted, setSkeletonMounted] = useState(true);
 
-  const settersRef = useRef({ setSelectedPlanet, setFilterOpen, setFilters });
-  settersRef.current = { setSelectedPlanet, setFilterOpen, setFilters };
+  useEffect(() => {
+    if (loading) setSkeletonMounted(true);
+  }, [loading]);
+
+  const handlePlanetClick = (planet) => {
+    if (compareMode) {
+      setComparePlanets((prev) => {
+        if (prev.some((p) => p.name === planet.name)) {
+          return prev.filter((p) => p.name !== planet.name);
+        }
+        if (prev.length >= 2) return [prev[1], planet];
+        return [...prev, planet];
+      });
+    } else {
+      setSelectedPlanet(planet);
+    }
+  };
+
+  const exitCompareMode = () => {
+    setComparePlanets([]);
+    setCompareMode(false);
+  };
+
+  const settersRef = useRef({
+    setSelectedPlanet,
+    setFilterOpen,
+    setFilters,
+    setCompareMode,
+    setComparePlanets,
+  });
+  settersRef.current = {
+    setSelectedPlanet,
+    setFilterOpen,
+    setFilters,
+    setCompareMode,
+    setComparePlanets,
+  };
 
   const resetZoomRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  const starMapRef = useRef(null);
+  const twinkleContainerRef = useRef(null);
+  const twinkleStarsRef = useRef(new Set());
+
+  useEffect(() => {
+    if (!loading) return;
+    const container = twinkleContainerRef.current;
+    if (!container) return;
+
+    const spawn = () => {
+      if (twinkleStarsRef.current.size >= MAX_TWINKLE_STARS) return;
+      const star = document.createElement('div');
+      const size = 1 + Math.random() * 3;
+      const color =
+        TWINKLE_COLORS[Math.floor(Math.random() * TWINKLE_COLORS.length)];
+      const duration = 0.8 + Math.random() * 1.7;
+      star.style.position = 'absolute';
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 100}%`;
+      star.style.width = `${size}px`;
+      star.style.height = `${size}px`;
+      star.style.borderRadius = '50%';
+      star.style.backgroundColor = color;
+      star.style.boxShadow = `0 0 ${size * 2}px ${color}`;
+      star.style.opacity = '0';
+      star.style.pointerEvents = 'none';
+      star.style.animation = `fadeInOut ${duration}s ease-in-out forwards`;
+      const handleEnd = () => {
+        twinkleStarsRef.current.delete(star);
+        star.remove();
+      };
+      star.addEventListener('animationend', handleEnd);
+      twinkleStarsRef.current.add(star);
+      container.appendChild(star);
+    };
+
+    const intervalId = window.setInterval(spawn, 200);
+    spawn();
+
+    return () => {
+      window.clearInterval(intervalId);
+      for (const star of twinkleStarsRef.current) {
+        star.remove();
+      }
+      twinkleStarsRef.current.clear();
+    };
+  }, [loading]);
+
+  useEffect(() => {
+    if (!data || data.length === 0) return;
+    const now = new Date();
+    const idx = (now.getDate() + now.getMonth() * 31) % data.length;
+    setFeaturedPlanet(data[idx]);
+  }, [data]);
 
   useEffect(() => {
     if (!data || data.length === 0) return;
@@ -90,6 +190,8 @@ function App() {
       if (key === 'Escape') {
         settersRef.current.setSelectedPlanet(null);
         settersRef.current.setFilterOpen(false);
+        settersRef.current.setComparePlanets([]);
+        settersRef.current.setCompareMode(false);
         if (isEditable) target.blur();
         return;
       }
@@ -148,7 +250,7 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background font-body text-text-primary">
-      <header className="header-scan-bar relative z-50 flex items-center justify-between border-b border-border bg-surface px-6 py-4">
+      <header id="app-header" className="header-scan-bar relative z-50 flex items-center justify-between border-b border-border bg-surface px-6 py-4">
         <div className="flex flex-col">
           <h1
             className="font-display text-2xl font-bold tracking-[0.2em] text-accent-cyan"
@@ -156,29 +258,82 @@ function App() {
           >
             EXOPLANET EXPLORER
           </h1>
-          <span className="text-xs uppercase tracking-widest text-text-secondary">
-            NASA Confirmed Exoplanet Archive
-          </span>
-        </div>
-        <div className="flex flex-col items-end">
-          <span className="text-xs uppercase tracking-widest text-text-muted">
-            Planets Loaded
-          </span>
-          <span className="font-display text-xl font-bold text-accent-teal">
-            {loading ? 'Loading...' : filteredPlanets.length.toLocaleString()}
-          </span>
-          {!loading && data && (
-            <span className="text-[10px] uppercase tracking-widest text-text-muted">
-              (of {data.length.toLocaleString()} total)
+          <div className="flex items-center gap-3">
+            <span className="text-xs uppercase tracking-widest text-text-secondary">
+              NASA Confirmed Exoplanet Archive
             </span>
-          )}
+            {featuredPlanet && featuredPlanet.name && (
+              <button
+                type="button"
+                onClick={() => setSelectedPlanet(featuredPlanet)}
+                title="View today's featured planet"
+                className="cursor-pointer font-display text-[10px] font-bold uppercase tracking-widest text-accent-amber transition-colors hover:text-accent-amber hover:underline"
+                style={{ textShadow: '0 0 8px rgba(255, 170, 0, 0.6)' }}
+              >
+                Today: {featuredPlanet.name} <span className="star-pulse">★</span>
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              if (compareMode) {
+                exitCompareMode();
+              } else {
+                setCompareMode(true);
+                setSelectedPlanet(null);
+              }
+            }}
+            title={compareMode ? 'Exit compare mode' : 'Select two planets to compare'}
+            className={`control-btn rounded border px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
+              compareMode
+                ? 'border-accent-amber bg-accent-amber/10 text-accent-amber'
+                : 'border-border bg-surface text-accent-cyan'
+            }`}
+          >
+            {compareMode
+              ? `Compare (${comparePlanets.length}/2)`
+              : 'Compare'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (filteredPlanets.length === 0) return;
+              const idx = Math.floor(Math.random() * filteredPlanets.length);
+              const planet = filteredPlanets[idx];
+              if (compareMode) exitCompareMode();
+              setSelectedPlanet(planet);
+              starMapRef.current?.focusPlanet(planet);
+            }}
+            title="Jump to a random planet"
+            className="ml-2 cursor-pointer font-display text-[11px] font-bold uppercase tracking-widest text-text-secondary transition-colors hover:text-accent-cyan hover:underline"
+          >
+            ⚄ Random
+          </button>
+          <div className="flex flex-col items-end">
+            <span className="text-xs uppercase tracking-widest text-text-muted">
+              Planets Loaded
+            </span>
+            <span
+              key={loading ? 'loading' : 'loaded'}
+              className={`font-display text-xl font-bold text-accent-teal ${
+                loading ? '' : 'count-fade-in'
+              }`}
+            >
+              {loading ? 'Loading...' : filteredPlanets.length.toLocaleString()}
+            </span>
+            {!loading && data && (
+              <span className="text-[10px] uppercase tracking-widest text-text-muted">
+                (of {data.length.toLocaleString()} total)
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="relative flex w-full h-full flex-1 items-center justify-center bg-background">
-        {loading && (
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-border border-t-accent-cyan" />
-        )}
         {!loading && error && (
           <div className="max-w-md text-center">
             <p className="mb-2 font-display text-lg uppercase tracking-widest text-accent-red">
@@ -191,12 +346,23 @@ function App() {
         )}
         {!loading && !error && data && (
           <StarMap
+            ref={starMapRef}
             planets={filteredPlanets}
-            onPlanetClick={(planet) => setSelectedPlanet(planet)}
+            onPlanetClick={handlePlanetClick}
             colorMode={colorMode}
             selectedPlanet={selectedPlanet}
             highlightHZ={highlightHZ}
             resetZoomRef={resetZoomRef}
+            compareMode={compareMode}
+            comparePlanets={comparePlanets}
+            onTransformChange={(transform, width, height) => {
+              setTransformState(transform);
+              setCanvasSize((prev) =>
+                prev.width === width && prev.height === height
+                  ? prev
+                  : { width, height },
+              );
+            }}
           />
         )}
       </main>
@@ -206,6 +372,13 @@ function App() {
         onColorModeChange={setColorMode}
         highlightHZ={highlightHZ}
         onHighlightHZChange={(val) => setHighlightHZ(val)}
+      />
+
+      <MiniMap
+        planets={filteredPlanets}
+        transform={transformState}
+        canvasWidth={canvasSize.width}
+        canvasHeight={canvasSize.height}
       />
 
       <div className="relative z-40">
@@ -260,9 +433,45 @@ function App() {
       <div className="relative z-50">
         <PlanetSidebar
           planet={selectedPlanet}
+          featuredPlanet={featuredPlanet}
           onClose={() => setSelectedPlanet(null)}
         />
       </div>
+
+      <ComparePanel planets={comparePlanets} onClose={exitCompareMode} />
+
+      {skeletonMounted && (
+        <div
+          className={`pointer-events-none fixed inset-0 z-40 overflow-hidden bg-background transition-opacity duration-500 ease-out ${
+            loading ? 'opacity-100' : 'opacity-0'
+          }`}
+          onTransitionEnd={(e) => {
+            if (e.propertyName === 'opacity' && !loading) {
+              setSkeletonMounted(false);
+            }
+          }}
+          aria-hidden={!loading}
+        >
+          <div ref={twinkleContainerRef} className="absolute inset-0" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
+            <h2
+              className="font-display text-xl font-bold uppercase tracking-[0.3em] text-accent-cyan"
+              style={{
+                textShadow:
+                  '0 0 14px rgba(0, 212, 255, 0.7), 0 0 4px rgba(0, 212, 255, 0.5)',
+              }}
+            >
+              Scanning Exoplanet Archive...
+            </h2>
+            <div className="h-1 w-80 max-w-full overflow-hidden rounded bg-surface-elevated">
+              <div className="skeleton-progress h-full" />
+            </div>
+            <p className="font-body text-xs uppercase tracking-widest text-text-muted">
+              Loading 6,000+ confirmed exoplanets from NASA archive
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

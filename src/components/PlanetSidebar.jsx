@@ -92,7 +92,7 @@ function PlanetGlyph({ type, color }) {
 
 function Row({ label, value }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border/40 py-2">
+    <div className="flex items-baseline justify-between gap-4 border-b border-border/40 px-2 py-2 transition-colors duration-150 hover:bg-surface-elevated">
       <span className="text-xs uppercase tracking-widest text-text-muted">
         {label}
       </span>
@@ -103,7 +103,7 @@ function Row({ label, value }) {
   );
 }
 
-function PlanetSidebar({ planet, onClose }) {
+function PlanetSidebar({ planet, onClose, featuredPlanet }) {
   const lastPlanetRef = useRef(planet);
   const [displayPlanet, setDisplayPlanet] = useState(planet);
 
@@ -133,7 +133,7 @@ function PlanetSidebar({ planet, onClose }) {
 
   return (
     <aside
-      className={`fixed right-0 top-0 z-40 flex h-full w-[360px] flex-col border-l border-border bg-surface shadow-2xl transition-transform duration-300 ease-out ${
+      className={`fixed right-0 top-0 z-40 flex h-full w-[360px] flex-col border-l border-border bg-surface shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
       aria-hidden={!isOpen}
@@ -149,6 +149,14 @@ function PlanetSidebar({ planet, onClose }) {
 
       {p && (
         <div className="flex h-full flex-col overflow-y-auto px-6 py-6">
+          {featuredPlanet && p === featuredPlanet && (
+            <div
+              className="featured-badge-pulse mb-3 inline-flex self-start rounded border border-accent-amber bg-accent-amber/10 px-2 py-1 font-display text-[10px] font-bold uppercase tracking-widest text-accent-amber"
+              style={{ textShadow: '0 0 8px rgba(255, 170, 0, 0.6)' }}
+            >
+              ★ Featured Today
+            </div>
+          )}
           <div className="mb-2 flex justify-center">
             <PlanetGlyph type={typeLabel} color={typeColor} />
           </div>
@@ -165,12 +173,12 @@ function PlanetSidebar({ planet, onClose }) {
 
           <div className="mt-4 flex flex-wrap gap-2">
             <span
-              className="rounded border px-2 py-1 font-display text-xs uppercase tracking-widest"
+              className="badge-fade-in rounded border px-2 py-1 font-display text-xs uppercase tracking-widest"
               style={{ color: typeColor, borderColor: typeColor }}
             >
               {typeLabel}
             </span>
-            <span className="rounded border border-border px-2 py-1 font-display text-xs uppercase tracking-widest text-text-secondary">
+            <span className="badge-fade-in rounded border border-border px-2 py-1 font-display text-xs uppercase tracking-widest text-text-secondary">
               {habitability}
             </span>
           </div>
@@ -195,7 +203,7 @@ function PlanetSidebar({ planet, onClose }) {
               href={`https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(p.name)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center justify-center gap-1.5 self-start rounded border border-accent-cyan bg-surface-elevated px-3 py-1.5 font-display text-[11px] font-bold uppercase tracking-widest text-accent-cyan transition-colors hover:bg-accent-cyan hover:text-background"
+              className="mt-6 inline-flex cursor-pointer items-center justify-center gap-1.5 self-start rounded border border-accent-cyan bg-surface-elevated px-3 py-1.5 font-display text-[11px] font-bold uppercase tracking-widest text-accent-cyan transition-colors hover:bg-accent-cyan hover:text-background"
             >
               <span>View on NASA Archive</span>
               <span>↗</span>
