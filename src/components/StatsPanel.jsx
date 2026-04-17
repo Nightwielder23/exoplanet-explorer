@@ -55,6 +55,7 @@ function StatsPanel({ planets }) {
     let distCount = 0;
     let hzCount = 0;
     let minYear = Infinity;
+    let closest = null;
 
     for (const p of planets) {
       const type = getPlanetType(p);
@@ -63,6 +64,9 @@ function StatsPanel({ planets }) {
       if (p.distance != null && Number.isFinite(p.distance)) {
         distSum += p.distance;
         distCount += 1;
+        if (p.distance > 0 && (closest == null || p.distance < closest.distance)) {
+          closest = p;
+        }
       }
 
       if (getHabitabilityZone(p) === 'Optimistic HZ') hzCount += 1;
@@ -86,6 +90,7 @@ function StatsPanel({ planets }) {
       avgDistance: distCount > 0 ? distSum / distCount : null,
       hzCount,
       earliestYear: minYear === Infinity ? null : minYear,
+      closest,
     };
   }, [planets]);
 
@@ -247,19 +252,24 @@ function StatsPanel({ planets }) {
       ? `${summary.avgDistance.toLocaleString(undefined, { maximumFractionDigits: 1 })} pc`
       : '—';
 
+  const closestLabel = summary.closest
+    ? `${summary.closest.name ?? 'Unknown'} — ${summary.closest.distance.toLocaleString(undefined, { maximumFractionDigits: 1 })} pc`
+    : '—';
+
   const isFiltered = planets.length < 6160;
 
   return (
-    <div className="flex flex-col items-end">
+    <div className="hidden md:block relative">
       <div
-        className="w-80 overflow-hidden transition-all duration-300 ease-in-out"
+        className="absolute bottom-full right-0 mb-2 flex w-80 flex-col justify-end overflow-hidden transition-all duration-300 ease-in-out"
         style={{
           maxHeight: isOpen ? '500px' : '0px',
           opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? 'auto' : 'none',
         }}
         aria-hidden={!isOpen}
       >
-        <div className="mb-2 rounded border border-border bg-surface p-3 shadow-2xl">
+        <div className="rounded border border-border bg-surface p-3 shadow-2xl">
           <div className="mb-3 flex items-center gap-2">
             <h3 className="font-display text-sm font-bold uppercase tracking-widest text-accent-cyan">
               Statistics
@@ -296,6 +306,14 @@ function StatsPanel({ planets }) {
               label="Earliest"
               value={summary.earliestYear ?? '—'}
             />
+            <div className="col-span-2 rounded border border-border bg-surface-elevated px-2 py-1.5 transition-all duration-150 hover:-translate-y-0.5 hover:bg-surface">
+              <div className="font-display text-[9px] uppercase tracking-widest text-text-muted">
+                Closest to Earth
+              </div>
+              <div className="mt-0.5 truncate font-body text-sm text-text-primary">
+                {closestLabel}
+              </div>
+            </div>
           </div>
         </div>
       </div>

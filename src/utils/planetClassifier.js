@@ -1,3 +1,5 @@
+import { CONSTELLATIONS } from '../data/constellations';
+
 const COLOR_HOT_JUPITER = '#ff4466';
 const COLOR_JUPITER = '#ffaa00';
 const COLOR_NEPTUNE = '#aa44ff';
@@ -43,4 +45,27 @@ export function getHabitabilityZone(planet) {
   if (t < 200) return 'Too Cold';
   if (t <= 320) return 'Optimistic HZ';
   return 'Too Hot';
+}
+
+export function getConstellation(planet) {
+  if (!planet || planet.ra == null || planet.dec == null) return null;
+  const { ra, dec } = planet;
+  for (const constellation of CONSTELLATIONS) {
+    const coords = constellation.coords;
+    if (!coords || coords.length === 0) continue;
+    let minRa = Infinity;
+    let maxRa = -Infinity;
+    let minDec = Infinity;
+    let maxDec = -Infinity;
+    for (const [cRa, cDec] of coords) {
+      if (cRa < minRa) minRa = cRa;
+      if (cRa > maxRa) maxRa = cRa;
+      if (cDec < minDec) minDec = cDec;
+      if (cDec > maxDec) maxDec = cDec;
+    }
+    if (ra >= minRa && ra <= maxRa && dec >= minDec && dec <= maxDec) {
+      return constellation.name;
+    }
+  }
+  return null;
 }

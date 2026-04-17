@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getPlanetType,
   getPlanetColor,
   getHabitabilityZone,
+  getConstellation,
 } from '../utils/planetClassifier';
 
 const PLANET_VIZ = {
@@ -103,9 +104,12 @@ function Row({ label, value }) {
   );
 }
 
-function PlanetSidebar({ planet, onClose, featuredPlanet }) {
+function PlanetSidebar({ planet, onClose, featuredPlanet, data = [], onSelectPlanet }) {
   const lastPlanetRef = useRef(planet);
   const [displayPlanet, setDisplayPlanet] = useState(planet);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768,
+  );
 
   useEffect(() => {
     if (planet) {
@@ -114,12 +118,19 @@ function PlanetSidebar({ planet, onClose, featuredPlanet }) {
     }
   }, [planet]);
 
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const isOpen = Boolean(planet);
   const p = displayPlanet;
 
   const typeLabel = p ? getPlanetType(p) : 'Unknown';
   const typeColor = p ? getPlanetColor(p) : '#3d6080';
   const habitability = p ? getHabitabilityZone(p) : 'Unknown';
+  const constellation = p ? getConstellation(p) : null;
 
   const fmt = (val, suffix, digits) => {
     if (val == null || Number.isNaN(val)) return 'Unknown';
@@ -131,24 +142,93 @@ function PlanetSidebar({ planet, onClose, featuredPlanet }) {
       ? `RA ${p.ra.toFixed(2)}°, Dec ${p.dec.toFixed(2)}°`
       : 'Unknown';
 
+  const similar = useMemo(() => {
+    if (!p || !Array.isArray(data) || data.length === 0) return [];
+    const targetType = getPlanetType(p);
+    const targetR = p.radius;
+    if (targetR == null || Number.isNaN(targetR)) return [];
+    const matches = [];
+    for (const other of data) {
+      if (!other || other === p) continue;
+      if (other.name && p.name && other.name === p.name) continue;
+      if (other.radius == null || Number.isNaN(other.radius)) continue;
+      if (getPlanetType(other) !== targetType) continue;
+      matches.push(other);
+    }
+    matches.sort(
+      (a, b) => Math.abs(a.radius - targetR) - Math.abs(b.radius - targetR),
+    );
+    return matches.slice(0, 3);
+  }, [p, data]);
+
+  const outerStyle = isMobile
+    ? {
+        position: 'fixed',
+        bottom: 60,
+        left: 0,
+        right: 0,
+        height: '75vh',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#0a1628',
+        borderTop: '1px solid #1a3a6b',
+        zIndex: 500,
+        transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      }
+    : {
+        position: 'fixed',
+        right: 0,
+        top: 0,
+        height: '100vh',
+        width: '360px',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#0a1628',
+        borderLeft: '1px solid #1a3a6b',
+        zIndex: 500,
+        transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      };
+
   return (
-    <aside
-      className={`fixed right-0 top-0 z-40 flex h-full w-[360px] flex-col border-l border-border bg-surface shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}
-      aria-hidden={!isOpen}
-    >
+    <div style={outerStyle} aria-hidden={!isOpen}>
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded border border-border text-text-secondary transition-colors hover:border-accent-cyan hover:text-accent-cyan"
         aria-label="Close planet details"
+        style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 32,
+          width: 32,
+          borderRadius: 4,
+          border: '1px solid #1a3a6b',
+          backgroundColor: 'rgba(10, 22, 40, 0.8)',
+          color: '#8a9cb8',
+          cursor: 'pointer',
+          fontSize: 16,
+          lineHeight: 1,
+        }}
       >
-        ×
+        ✕
       </button>
-
       {p && (
-        <div className="flex h-full flex-col overflow-y-auto px-6 py-6">
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            paddingTop: '20px',
+            paddingBottom: '40px',
+            paddingLeft: '24px',
+            paddingRight: '24px',
+          }}
+        >
           {featuredPlanet && p === featuredPlanet && (
             <div
               className="featured-badge-pulse mb-3 inline-flex self-start rounded border border-accent-amber bg-accent-amber/10 px-2 py-1 font-display text-[10px] font-bold uppercase tracking-widest text-accent-amber"
@@ -170,7 +250,6 @@ function PlanetSidebar({ planet, onClose, featuredPlanet }) {
           >
             {p.name ?? 'Unknown'}
           </h2>
-
           <div className="mt-4 flex flex-wrap gap-2">
             <span
               className="badge-fade-in rounded border px-2 py-1 font-display text-xs uppercase tracking-widest"
@@ -195,8 +274,46 @@ function PlanetSidebar({ planet, onClose, featuredPlanet }) {
             />
             <Row label="Discovery Method" value={p.discoveryMethod || 'Unknown'} />
             <Row label="Discovery Year" value={p.discoveryYear || 'Unknown'} />
+            <Row label="Constellation" value={constellation || 'Unknown'} />
             <Row label="Coordinates" value={coords} />
           </div>
+
+          {similar.length > 0 && (
+            <div className="mt-6">
+              <div className="mb-2 font-display text-[10px] uppercase tracking-widest text-text-secondary">
+                Similar Planets
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {similar.map((sp) => {
+                  const spType = getPlanetType(sp);
+                  const spColor = getPlanetColor(sp);
+                  return (
+                    <button
+                      key={sp.name ?? `${sp.ra}-${sp.dec}-${sp.radius}`}
+                      type="button"
+                      onClick={() => onSelectPlanet?.(sp)}
+                      className="flex flex-col gap-1 rounded border border-border bg-surface-elevated px-2 py-1.5 text-left transition-colors hover:border-accent-cyan"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate font-body text-sm text-text-primary">
+                          {sp.name ?? 'Unknown'}
+                        </span>
+                        <span className="whitespace-nowrap font-body text-[11px] text-text-muted">
+                          {fmt(sp.distance, ' pc', 1)}
+                        </span>
+                      </div>
+                      <span
+                        className="self-start rounded border px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest"
+                        style={{ color: spColor, borderColor: spColor }}
+                      >
+                        {spType}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {p.name && (
             <a
@@ -211,7 +328,7 @@ function PlanetSidebar({ planet, onClose, featuredPlanet }) {
           )}
         </div>
       )}
-    </aside>
+    </div>
   );
 }
 

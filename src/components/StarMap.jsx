@@ -8,6 +8,7 @@ import {
 } from 'react';
 import * as d3 from 'd3';
 import { getPlanetColor, getHabitabilityZone } from '../utils/planetClassifier';
+import { CONSTELLATIONS } from '../data/constellations';
 
 const HABITABILITY_COLORS = {
   'Optimistic HZ': '#00ff88',
@@ -18,6 +19,43 @@ const HABITABILITY_COLORS = {
 
 const DEC_LINES = [-60, -30, 0, 30, 60];
 const RA_LINES = [60, 120, 180, 240, 300];
+
+function getStarConfig() {
+  const isMobile =
+    window.innerWidth < 768 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent,
+    );
+  return isMobile
+    ? {
+        isMobile: true,
+        maxStars: 70,
+        spawnPerFrame: 1,
+        radiusMin: 0.4,
+        radiusMax: 1.2,
+        highIntensity: { fadeIn: [50, 80], hold: [120, 200], fadeOut: [50, 80] },
+        mediumIntensity: {
+          fadeIn: [80, 130],
+          hold: [200, 350],
+          fadeOut: [80, 130],
+        },
+        lowIntensity: {
+          fadeIn: [120, 200],
+          hold: [350, 550],
+          fadeOut: [120, 200],
+        },
+      }
+    : {
+        isMobile: false,
+        maxStars: 330,
+        spawnPerFrame: 5,
+        radiusMin: 0.3,
+        radiusMax: 0.9,
+        highIntensity: { fadeIn: [8, 15], hold: [25, 45], fadeOut: [8, 18] },
+        mediumIntensity: { fadeIn: [15, 25], hold: [50, 80], fadeOut: [15, 25] },
+        lowIntensity: { fadeIn: [25, 40], hold: [90, 150], fadeOut: [25, 40] },
+      };
+}
 
 const StarMap = forwardRef(function StarMap(
   {
@@ -30,11 +68,54 @@ const StarMap = forwardRef(function StarMap(
     onTransformChange,
     compareMode = false,
     comparePlanets = [],
+    heatmapMode = false,
+    showConstellations = false,
+    sidebarOpen = false,
   },
   ref,
 ) {
+  const isMobile =
+    window.innerWidth < 768 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent,
+    );
+
+  const starConfig = isMobile
+    ? {
+        maxStars: 45,
+        spawnPerFrame: 1,
+        radiusMin: 0.2,
+        radiusMax: 0.5,
+        highIntensity: { fadeIn: [50, 80], hold: [120, 200], fadeOut: [50, 80] },
+        mediumIntensity: {
+          fadeIn: [80, 130],
+          hold: [200, 350],
+          fadeOut: [80, 130],
+        },
+        lowIntensity: {
+          fadeIn: [120, 200],
+          hold: [350, 550],
+          fadeOut: [120, 200],
+        },
+      }
+    : {
+        maxStars: 220,
+        spawnPerFrame: 5,
+        radiusMin: 0.3,
+        radiusMax: 0.9,
+        highIntensity: { fadeIn: [8, 15], hold: [25, 45], fadeOut: [8, 18] },
+        mediumIntensity: { fadeIn: [15, 25], hold: [50, 80], fadeOut: [15, 25] },
+        lowIntensity: { fadeIn: [25, 40], hold: [90, 150], fadeOut: [25, 40] },
+      };
+
+  // eslint-disable-next-line no-console
+  console.log('[StarMap] init isMobile:', isMobile, window.innerWidth);
+
+  const starConfigRef = useRef(null);
+
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  const starsCanvasRef = useRef(null);
   const overlayRef = useRef(null);
   const tooltipRef = useRef(null);
   const coordDisplayRef = useRef(null);
@@ -42,6 +123,7 @@ const StarMap = forwardRef(function StarMap(
   const transformRef = useRef(d3.zoomIdentity);
   const initialTransformRef = useRef(null);
   const draggingRef = useRef(false);
+  const isDraggingRef = useRef(false);
   const interactingRef = useRef(false);
   const hoveredPlanetRef = useRef(null);
   const [cursorMode, setCursorMode] = useState('grab');
@@ -49,6 +131,7 @@ const StarMap = forwardRef(function StarMap(
   const colorByPlanetRef = useRef(new Map());
   const hzByPlanetRef = useRef(new Map());
   const highlightHZRef = useRef(highlightHZ);
+  const showConstellationsRef = useRef(showConstellations);
   const xScaleRef = useRef(d3.scaleLinear().domain([0, 360]).range([0, 360]));
   const yScaleRef = useRef(d3.scaleLinear().domain([-90, 90]).range([180, 0]));
   const onPlanetClickRef = useRef(onPlanetClick);
@@ -60,7 +143,15 @@ const StarMap = forwardRef(function StarMap(
   const transitionRafRef = useRef(null);
   const compareModeRef = useRef(compareMode);
   const comparePlanetsRef = useRef(comparePlanets);
+  const heatmapModeRef = useRef(heatmapMode);
+  const sidebarOpenRef = useRef(sidebarOpen);
   const zoomRef = useRef(null);
+  const heatmapGridRef = useRef(null);
+  const hasFitInitialRef = useRef(false);
+  const offscreenHeatmapCanvasRef = useRef(null);
+  const starsRef = useRef([]);
+  const starsAnimRafRef = useRef(null);
+  const starsInitializedRef = useRef(false);
 
   const colorByPlanet = useMemo(() => {
     const m = new Map();
@@ -87,7 +178,129 @@ const StarMap = forwardRef(function StarMap(
     const container = containerRef.current;
     if (!canvasRef.current || !overlay || !container) return;
 
+    const starsCs = getComputedStyle(starsCanvasRef.current);
+    const mainCs = getComputedStyle(canvasRef.current);
+    const containerCs = getComputedStyle(container);
+    // eslint-disable-next-line no-console
+    console.log('[StarMap] canvas layering', {
+      starsCanvas: {
+        zIndex: starsCs.zIndex,
+        backgroundColor: starsCs.backgroundColor,
+      },
+      mainCanvas: {
+        zIndex: mainCs.zIndex,
+        backgroundColor: mainCs.backgroundColor,
+      },
+      container: {
+        backgroundColor: containerCs.backgroundColor,
+      },
+    });
+
     const tooltip = d3.select(tooltipRef.current);
+
+
+    const getBoundary = () => {
+      const t = transformRef.current;
+      if (!t) return null;
+      const bLeft = t.x;
+      const bRight = t.x + 360 * t.k;
+      const bTop = t.y;
+      const bBottom = t.y + 180 * t.k;
+      return { bLeft, bRight, bTop, bBottom };
+    };
+
+    const sampleRange = ([min, max]) => min + Math.random() * (max - min);
+
+    const buildStarProps = () => {
+      starConfigRef.current = getStarConfig();
+      const colorRoll = Math.random();
+      let color;
+      if (colorRoll < 0.6) color = '#ffffff';
+      else if (colorRoll < 0.8) color = '#ddeeff';
+      else if (colorRoll < 0.9) color = '#fff8ee';
+      else color = '#aaaaaa';
+      const cfg = starConfigRef.current;
+      const intensityRoll = Math.random();
+      let twinkleIntensity;
+      let bucket;
+      if (intensityRoll < 0.2) {
+        twinkleIntensity = 0.7 + Math.random() * 0.3;
+        bucket = cfg.highIntensity;
+      } else if (intensityRoll < 0.5) {
+        twinkleIntensity = 0.4 + Math.random() * 0.3;
+        bucket = cfg.mediumIntensity;
+      } else {
+        twinkleIntensity = 0.3 + Math.random() * 0.1;
+        bucket = cfg.lowIntensity;
+      }
+      const maxOpacity = 0.7 + Math.random() * 0.3;
+      return {
+        color,
+        twinkleIntensity,
+        inDur: sampleRange(bucket.fadeIn),
+        holdDur: sampleRange(bucket.hold),
+        outDur: sampleRange(bucket.fadeOut),
+        r:
+          cfg.radiusMin +
+          Math.random() * (cfg.radiusMax - cfg.radiusMin),
+        maxOpacity,
+      };
+    };
+
+    let spawnLogCount = 0;
+    const spawnStar = (randomPhase = false) => {
+      const { width, height } = sizeRef.current;
+      if (!width || !height) return null;
+      const b = getBoundary();
+      if (!b) return null;
+      const isOut = (x, y) =>
+        x < b.bLeft || x > b.bRight || y < b.bTop || y > b.bBottom;
+      let sx;
+      let sy;
+      let tries = 0;
+      do {
+        sx = Math.random() * width;
+        sy = Math.random() * height;
+        tries++;
+      } while (!isOut(sx, sy) && tries < 50);
+      if (tries >= 50) return null;
+      const props = buildStarProps();
+      if (spawnLogCount < 10) {
+        spawnLogCount++;
+        // eslint-disable-next-line no-console
+        console.log(
+          '[spawn] isMobile:',
+          isMobile,
+          'maxStars:',
+          starConfigRef.current.maxStars,
+          'fadeIn:',
+          props.inDur,
+        );
+      }
+      let phase = 'in';
+      let age = 0;
+      if (randomPhase) {
+        const phaseRoll = Math.random();
+        if (phaseRoll < 0.4) {
+          phase = 'hold';
+          age = Math.random() * props.holdDur;
+        } else if (phaseRoll < 0.7) {
+          phase = 'out';
+          age = Math.random() * props.outDur;
+        } else {
+          phase = 'in';
+          age = Math.random() * props.inDur;
+        }
+      }
+      return {
+        x: sx,
+        y: sy,
+        opacity: 0,
+        phase,
+        age,
+        ...props,
+      };
+    };
 
     const redraw = () => {
       const canvas = canvasRef.current;
@@ -95,7 +308,10 @@ const StarMap = forwardRef(function StarMap(
       const ctx = canvas.getContext('2d');
       const { width, height } = sizeRef.current;
       if (!width || !height) return;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(
+        window.devicePixelRatio || 1,
+        window.innerWidth < 768 ? 1.5 : 3,
+      );
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -105,21 +321,24 @@ const StarMap = forwardRef(function StarMap(
       const yScale = yScaleRef.current;
       const validPlanets = planetsRef.current;
       const colors = colorByPlanetRef.current;
-      const useGlow = !interactingRef.current;
+      const isMobile = window.innerWidth < 768;
+      const isDragging = isDraggingRef.current;
+      const useGlow = !interactingRef.current && !isMobile && !isDragging;
 
       ctx.shadowBlur = 0;
+
       ctx.save();
       ctx.translate(t.x, t.y);
       ctx.scale(t.k, t.k);
 
-      const dotR = 3 / t.k;
-      const hoverR = 5 / t.k;
+      const dotR = (isMobile ? 2 : 2.5) / t.k;
+      const hoverR = (isMobile ? 4 : 5) / t.k;
       const lineW = 0.8 / t.k;
 
       ctx.strokeStyle = '#2a5a9b';
       ctx.lineWidth = lineW;
       ctx.globalAlpha = 0.6;
-      ctx.shadowBlur = 3 / t.k;
+      ctx.shadowBlur = isMobile ? 0 : 3 / t.k;
       ctx.shadowColor = '#1a4a8b';
       for (const dec of DEC_LINES) {
         const y = yScale(dec);
@@ -145,7 +364,7 @@ const StarMap = forwardRef(function StarMap(
       ctx.globalAlpha = 0.7;
       ctx.strokeStyle = '#1a4a8b';
       ctx.lineWidth = 1 / t.k;
-      ctx.shadowBlur = 8 / t.k;
+      ctx.shadowBlur = isMobile ? 0 : 8 / t.k;
       ctx.shadowColor = '#00d4ff';
       ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
       ctx.shadowBlur = 0;
@@ -170,7 +389,7 @@ const StarMap = forwardRef(function StarMap(
       ctx.stroke();
 
       ctx.fillStyle = '#00d4ff';
-      ctx.shadowBlur = 6 / t.k;
+      ctx.shadowBlur = isMobile ? 0 : 6 / t.k;
       ctx.shadowColor = '#00d4ff';
       const cornerDotR = 3 / t.k;
       const cornerPts = [
@@ -186,38 +405,30 @@ const StarMap = forwardRef(function StarMap(
       }
       ctx.shadowBlur = 0;
 
-      ctx.font = `bold ${18 / t.k}px IBM Plex Mono`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.globalAlpha = 1;
       const labelText = 'OBSERVABLE SKY BOUNDARY';
-      const labelX = xScale(180);
-      const labelY = y0 - 8 / t.k;
-      const labelMetrics = ctx.measureText(labelText);
-      const bgPadX = 12 / t.k;
-      const bgPadY = 6 / t.k;
-      const bgW = labelMetrics.width + bgPadX * 2;
-      const bgH = 18 / t.k + bgPadY * 2;
-      const bgX = labelX - bgW / 2;
-      const bgY = labelY - bgH / 2;
-      const bgRadius = 4 / t.k;
-
-      ctx.fillStyle = 'rgba(0, 15, 30, 0.85)';
-      ctx.beginPath();
-      if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(bgX, bgY, bgW, bgH, bgRadius);
-      } else {
-        ctx.rect(bgX, bgY, bgW, bgH);
-      }
-      ctx.fill();
-
+      const fontSize = 18 / t.k;
       if ('letterSpacing' in ctx) {
         ctx.letterSpacing = '2px';
       }
+      ctx.font = `bold ${fontSize}px IBM Plex Mono`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.globalAlpha = 1;
+      const textMetrics = ctx.measureText(labelText);
+      const textWidth = textMetrics.width;
+      const textHeight = fontSize;
+
+      const rectX = xScale(180) - textWidth / 2 - 16 / t.k;
+      const rectY = yScale(90) - textHeight - 14 / t.k;
+      const rectW = textWidth + 32 / t.k;
+      const rectH = textHeight + 10 / t.k;
+      ctx.fillStyle = 'rgba(0, 10, 25, 0.9)';
+      ctx.fillRect(rectX, rectY, rectW, rectH);
+
       ctx.fillStyle = '#00d4ff';
       ctx.shadowColor = '#00d4ff';
-      ctx.shadowBlur = 10 / t.k;
-      ctx.fillText(labelText, labelX, labelY);
+      ctx.shadowBlur = isMobile ? 0 : 10 / t.k;
+      ctx.fillText(labelText, xScale(180), yScale(90) - 8 / t.k);
       ctx.shadowBlur = 0;
       if ('letterSpacing' in ctx) {
         ctx.letterSpacing = '0px';
@@ -255,9 +466,25 @@ const StarMap = forwardRef(function StarMap(
       }
       const enteringNames = transition?.enteringNames ?? null;
 
+      const cullMargin = 20;
+      const visDataMinX = (-cullMargin - t.x) / t.k;
+      const visDataMaxX = (width + cullMargin - t.x) / t.k;
+      const visDataMinY = (-cullMargin - t.y) / t.k;
+      const visDataMaxY = (height + cullMargin - t.y) / t.k;
+      const isInView = (x, y) =>
+        x >= visDataMinX &&
+        x <= visDataMaxX &&
+        y >= visDataMinY &&
+        y <= visDataMaxY;
+
       const stableByColor = new Map();
       const enteringByColor = new Map();
       for (const p of validPlanets) {
+        if (isMobile) {
+          const x = xScale(p.ra);
+          const y = yScale(p.dec);
+          if (!isInView(x, y)) continue;
+        }
         const color = colors.get(p) ?? '#3d6080';
         const isEntering = enteringNames && p.name && enteringNames.has(p.name);
         const target = isEntering ? enteringByColor : stableByColor;
@@ -269,14 +496,15 @@ const StarMap = forwardRef(function StarMap(
         group.push(p);
       }
 
+      const useShadow = !isMobile && useGlow;
       const baseAlpha = hzHighlight ? 0.2 : 1;
       const drawBatch = (byColorMap, alpha) => {
         if (alpha <= 0) return;
         ctx.globalAlpha = baseAlpha * alpha;
         for (const [color, group] of byColorMap) {
           ctx.fillStyle = color;
-          if (!hzHighlight && useGlow) {
-            ctx.shadowBlur = 6;
+          if (!hzHighlight && useShadow) {
+            ctx.shadowBlur = 4;
             ctx.shadowColor = color;
           } else {
             ctx.shadowBlur = 0;
@@ -291,6 +519,57 @@ const StarMap = forwardRef(function StarMap(
           ctx.fill();
         }
       };
+
+      if (heatmapModeRef.current && !isDragging) {
+        const grid = heatmapGridRef.current;
+        if (grid) {
+          const { cols, rows, data } = grid;
+          let off = offscreenHeatmapCanvasRef.current;
+          if (!off) {
+            off = document.createElement('canvas');
+            offscreenHeatmapCanvasRef.current = off;
+          }
+          if (off.width !== canvas.width || off.height !== canvas.height) {
+            off.width = canvas.width;
+            off.height = canvas.height;
+          }
+          const offCtx = off.getContext('2d');
+          offCtx.setTransform(1, 0, 0, 1, 0, 0);
+          offCtx.clearRect(0, 0, off.width, off.height);
+          offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          offCtx.translate(t.x, t.y);
+          offCtx.scale(t.k, t.k);
+
+          const cellW = 360 / cols;
+          const cellH = 180 / rows;
+          const bandColor = (v) => {
+            if (v >= 200) return 'rgba(200, 240, 255, 0.68)';
+            if (v >= 51) return 'rgba(100, 220, 255, 0.55)';
+            if (v >= 21) return 'rgba(0, 200, 255, 0.42)';
+            if (v >= 6) return 'rgba(0, 150, 255, 0.28)';
+            if (v >= 1) return 'rgba(0, 100, 255, 0.15)';
+            return null;
+          };
+
+          for (let gy = 0; gy < rows; gy++) {
+            for (let gx = 0; gx < cols; gx++) {
+              const v = data[gy * cols + gx];
+              if (v < 1) continue;
+              const fill = bandColor(v);
+              if (!fill) continue;
+              offCtx.fillStyle = fill;
+              offCtx.fillRect(gx * cellW, gy * cellH, cellW + 0.5, cellH + 0.5);
+            }
+          }
+
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.filter = 'blur(8px)';
+          ctx.drawImage(off, 0, 0);
+          ctx.filter = 'none';
+          ctx.restore();
+        }
+      }
 
       drawBatch(stableByColor, 1);
       if (transition) {
@@ -316,11 +595,12 @@ const StarMap = forwardRef(function StarMap(
         );
         const hzR = 4 / t.k;
         ctx.fillStyle = '#00ff88';
-        ctx.shadowBlur = 12 / t.k;
+        ctx.shadowBlur = useShadow ? 12 / t.k : 0;
         ctx.shadowColor = '#00ff88';
         for (const p of hzPlanets) {
           const x = xScale(p.ra);
           const y = yScale(p.dec);
+          if (isMobile && !isInView(x, y)) continue;
           ctx.beginPath();
           ctx.arc(x, y, hzR, 0, Math.PI * 2);
           ctx.fill();
@@ -334,7 +614,7 @@ const StarMap = forwardRef(function StarMap(
         const hx = xScale(hovered.ra);
         const hy = yScale(hovered.dec);
         ctx.fillStyle = color;
-        if (useGlow) {
+        if (useShadow) {
           ctx.shadowBlur = 10;
           ctx.shadowColor = color;
         } else {
@@ -347,7 +627,7 @@ const StarMap = forwardRef(function StarMap(
 
       const compareList = comparePlanetsRef.current;
       if (compareList && compareList.length > 0) {
-        ctx.shadowBlur = 8 / t.k;
+        ctx.shadowBlur = isMobile ? 0 : 8 / t.k;
         ctx.shadowColor = '#ffaa00';
         ctx.strokeStyle = '#ffaa00';
         ctx.lineWidth = 1.75 / t.k;
@@ -391,10 +671,203 @@ const StarMap = forwardRef(function StarMap(
         ctx.globalAlpha = 1;
       }
 
+      if (showConstellationsRef.current && !isDragging) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(180, 220, 255, 0.85)';
+        ctx.lineWidth = 2 / t.k;
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = isMobile ? 0 : 6 / t.k;
+        ctx.shadowColor = 'rgba(150, 200, 255, 0.9)';
+        for (const constellation of CONSTELLATIONS) {
+          const coords = constellation.coords;
+          if (!coords || coords.length < 2) continue;
+          ctx.beginPath();
+          for (let i = 0; i < coords.length; i++) {
+            const [ra, dec] = coords[i];
+            const px = xScale(ra);
+            const py = yScale(dec);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+
+        const fontSize = 12 / t.k;
+        ctx.font = `${fontSize}px IBM Plex Mono`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 1;
+        const offset = 15 / t.k;
+        for (const constellation of CONSTELLATIONS) {
+          const coords = constellation.coords;
+          if (!coords || coords.length === 0) continue;
+          let sumRa = 0;
+          let sumDec = 0;
+          for (const [ra, dec] of coords) {
+            sumRa += ra;
+            sumDec += dec;
+          }
+          const cRa = sumRa / coords.length;
+          const cDec = sumDec / coords.length;
+          const lx = xScale(cRa) + offset;
+          const ly = yScale(cDec) + offset;
+          const metrics = ctx.measureText(constellation.name);
+          const padX = 6 / t.k;
+          const padY = 3 / t.k;
+          const bgW = metrics.width + padX * 2;
+          const bgH = fontSize + padY * 2;
+          ctx.fillStyle = 'rgba(0, 10, 25, 0.85)';
+          ctx.fillRect(lx - bgW / 2, ly - bgH / 2, bgW, bgH);
+          ctx.fillStyle = '#aaddff';
+          ctx.fillText(constellation.name, lx, ly);
+        }
+        ctx.restore();
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+        ctx.globalAlpha = 1;
+      }
+
       ctx.restore();
       ctx.shadowBlur = 0;
     };
     redrawRef.current = redraw;
+
+    let frameCount = 0;
+    const drawStars = () => {
+      const sCanvas = starsCanvasRef.current;
+      if (!sCanvas) {
+        starsAnimRafRef.current = requestAnimationFrame(drawStars);
+        return;
+      }
+      const { width, height } = sizeRef.current;
+      if (!width || !height) {
+        starsAnimRafRef.current = requestAnimationFrame(drawStars);
+        return;
+      }
+      const dpr = Math.min(
+        window.devicePixelRatio || 1,
+        window.innerWidth < 768 ? 1.5 : 3,
+      );
+      const sCtx = sCanvas.getContext('2d');
+      sCtx.setTransform(1, 0, 0, 1, 0, 0);
+      sCtx.clearRect(0, 0, sCanvas.width, sCanvas.height);
+      sCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const stars = starsRef.current;
+      const b = getBoundary();
+
+      frameCount++;
+      if (frameCount % 120 === 0 && b) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[Stars] alive:',
+          starsRef.current.length,
+          'phases:',
+          starsRef.current.reduce((acc, s) => {
+            acc[s.phase] = (acc[s.phase] || 0) + 1;
+            return acc;
+          }, {}),
+        );
+        // eslint-disable-next-line no-console
+        console.log(
+          '[Stars] maxStars cap:',
+          starConfigRef.current.maxStars,
+          'current alive:',
+          starsRef.current.length,
+        );
+        // eslint-disable-next-line no-console
+        console.log('[Stars] boundary:', {
+          bL: b.bLeft,
+          bR: b.bRight,
+          bT: b.bTop,
+          bB: b.bBottom,
+          screenW: window.innerWidth,
+          screenH: window.innerHeight,
+        });
+      }
+
+      for (let i = stars.length - 1; i >= 0; i--) {
+        const s = stars[i];
+        if (
+          b &&
+          s.x >= b.bLeft &&
+          s.x <= b.bRight &&
+          s.y >= b.bTop &&
+          s.y <= b.bBottom
+        ) {
+          stars.splice(i, 1);
+          continue;
+        }
+        s.age++;
+        if (s.phase === 'in') {
+          s.opacity = (s.age / s.inDur) * s.maxOpacity;
+          if (s.age >= s.inDur) {
+            s.phase = 'hold';
+            s.age = 0;
+          }
+        } else if (s.phase === 'hold') {
+          s.opacity = s.maxOpacity;
+          if (s.age >= s.holdDur) {
+            s.phase = 'out';
+            s.age = 0;
+          }
+        } else {
+          s.opacity = (1 - s.age / s.outDur) * s.maxOpacity;
+          if (s.age >= s.outDur) {
+            stars.splice(i, 1);
+            continue;
+          }
+        }
+      }
+
+      if (!starsInitializedRef.current) {
+        starsInitializedRef.current = true;
+        while (stars.length < starConfigRef.current.maxStars) {
+          const s = spawnStar(true);
+          if (!s) break;
+          stars.push(s);
+        }
+      }
+
+      if (frameCount % 120 === 0) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[Stars] using maxStars:',
+          starConfigRef.current.maxStars,
+          'innerWidth:',
+          window.innerWidth,
+        );
+      }
+      const frameSpawnLimit = getStarConfig().spawnPerFrame;
+      let spawned = 0;
+      while (
+        starsRef.current.length < getStarConfig().maxStars &&
+        spawned < frameSpawnLimit
+      ) {
+        const s = spawnStar(false);
+        if (!s) break;
+        stars.push(s);
+        spawned++;
+      }
+
+      sCtx.shadowBlur = 2;
+      sCtx.shadowColor = '#ffffff';
+      for (const s of stars) {
+        const op = Math.max(0, Math.min(1, s.opacity));
+        if (op <= 0) continue;
+        sCtx.globalAlpha = op;
+        sCtx.fillStyle = s.color;
+        sCtx.beginPath();
+        sCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        sCtx.fill();
+      }
+      sCtx.globalAlpha = 1;
+      sCtx.shadowBlur = 0;
+
+      starsAnimRafRef.current = requestAnimationFrame(drawStars);
+    };
+    starsAnimRafRef.current = requestAnimationFrame(drawStars);
 
     const findNearest = (mx, my) => {
       const t = transformRef.current;
@@ -442,18 +915,6 @@ const StarMap = forwardRef(function StarMap(
       } else {
         tooltip.style('opacity', 0);
       }
-
-      const coordEl = coordDisplayRef.current;
-      if (coordEl) {
-        const t = transformRef.current;
-        const dataX = (mx - t.x) / t.k;
-        const dataY = (my - t.y) / t.k;
-        const ra = xScaleRef.current.invert(dataX);
-        const dec = yScaleRef.current.invert(dataY);
-        coordEl.textContent = `RA ${ra.toFixed(1)}°  Dec ${dec >= 0 ? '+' : ''}${dec.toFixed(1)}°`;
-        coordEl.style.opacity = '1';
-        coordEl.style.visibility = 'visible';
-      }
     };
 
     const handleMouseLeave = () => {
@@ -464,10 +925,6 @@ const StarMap = forwardRef(function StarMap(
       tooltip.style('opacity', 0);
       if (!draggingRef.current) {
         setCursorMode(compareModeRef.current ? 'crosshair' : 'grab');
-      }
-      if (coordDisplayRef.current) {
-        coordDisplayRef.current.style.opacity = '0';
-        coordDisplayRef.current.style.visibility = 'hidden';
       }
     };
 
@@ -490,6 +947,11 @@ const StarMap = forwardRef(function StarMap(
     const zoom = d3
       .zoom()
       .scaleExtent([0.1, 20])
+      .filter((event) => {
+        if (event.type && event.type.startsWith('touch')) return false;
+        if (event.pointerType === 'touch') return false;
+        return !event.ctrlKey && !event.button;
+      })
       .on('start', (event) => {
         interactingRef.current = true;
         if (event.sourceEvent && event.sourceEvent.type === 'mousedown') {
@@ -521,13 +983,118 @@ const StarMap = forwardRef(function StarMap(
     d3overlay.call(zoom).on('dblclick.zoom', null);
     zoomRef.current = zoom;
 
-    let hasFitInitial = false;
+    let touchStartMid = { x: 0, y: 0 };
+    let touchStartDist = 0;
+    let touchStartTransform = null;
+    let touchMoved = false;
+    let touchSingleStart = { x: 0, y: 0, clientX: 0, clientY: 0, time: 0 };
+
+    const touchDistance = (touches) => {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const touchMidpoint = (touches, rect) => ({
+      x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+      y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top,
+    });
+
+    const handleTouchStart = (event) => {
+      event.preventDefault();
+      interactingRef.current = true;
+      isDraggingRef.current = true;
+      touchMoved = false;
+      touchStartTransform = transformRef.current;
+      const rect = overlay.getBoundingClientRect();
+      if (event.touches.length === 1) {
+        const t = event.touches[0];
+        touchSingleStart = {
+          x: t.clientX - rect.left,
+          y: t.clientY - rect.top,
+          clientX: t.clientX,
+          clientY: t.clientY,
+          time: Date.now(),
+        };
+      } else if (event.touches.length === 2) {
+        touchStartDist = touchDistance(event.touches);
+        touchStartMid = touchMidpoint(event.touches, rect);
+      }
+    };
+
+    const handleTouchMove = (event) => {
+      event.preventDefault();
+      if (!touchStartTransform) return;
+      const rect = overlay.getBoundingClientRect();
+      if (event.touches.length === 1) {
+        const t = event.touches[0];
+        const dx = t.clientX - touchSingleStart.clientX;
+        const dy = t.clientY - touchSingleStart.clientY;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) touchMoved = true;
+        const nt = d3.zoomIdentity
+          .translate(touchStartTransform.x + dx, touchStartTransform.y + dy)
+          .scale(touchStartTransform.k);
+        d3overlay.call(zoom.transform, nt);
+      } else if (event.touches.length === 2 && touchStartDist > 0) {
+        touchMoved = true;
+        const newDist = touchDistance(event.touches);
+        const factor = newDist / touchStartDist;
+        const rawK = touchStartTransform.k * factor;
+        const [minK, maxK] = zoom.scaleExtent();
+        const newK = Math.max(minK, Math.min(maxK, rawK));
+        const pivotDataX = (touchStartMid.x - touchStartTransform.x) / touchStartTransform.k;
+        const pivotDataY = (touchStartMid.y - touchStartTransform.y) / touchStartTransform.k;
+        const currentMid = touchMidpoint(event.touches, rect);
+        const newX = currentMid.x - pivotDataX * newK;
+        const newY = currentMid.y - pivotDataY * newK;
+        const nt = d3.zoomIdentity.translate(newX, newY).scale(newK);
+        d3overlay.call(zoom.transform, nt);
+      }
+    };
+
+    const handleTouchEnd = (event) => {
+      event.preventDefault();
+      if (event.touches.length === 0) {
+        interactingRef.current = false;
+        isDraggingRef.current = false;
+        if (!touchMoved && touchStartTransform) {
+          const nearest = findNearest(touchSingleStart.x, touchSingleStart.y);
+          if (nearest && onPlanetClickRef.current) {
+            onPlanetClickRef.current(nearest);
+          }
+        }
+        touchStartTransform = null;
+        touchStartDist = 0;
+        redraw();
+      } else if (event.touches.length === 1) {
+        const t = event.touches[0];
+        const rect = overlay.getBoundingClientRect();
+        touchSingleStart = {
+          x: t.clientX - rect.left,
+          y: t.clientY - rect.top,
+          clientX: t.clientX,
+          clientY: t.clientY,
+          time: Date.now(),
+        };
+        touchStartTransform = transformRef.current;
+        touchStartDist = 0;
+      }
+    };
+
+    overlay.addEventListener('touchstart', handleTouchStart, { passive: false });
+    overlay.addEventListener('touchmove', handleTouchMove, { passive: false });
+    overlay.addEventListener('touchend', handleTouchEnd, { passive: false });
+    overlay.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
     const observer = new ResizeObserver(() => {
       const width = window.innerWidth;
       const height = window.innerHeight;
       if (!width || !height) return;
       sizeRef.current = { width, height };
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(
+        window.devicePixelRatio || 1,
+        window.innerWidth < 768 ? 1.5 : 3,
+      );
       const canvas = canvasRef.current;
       if (canvas) {
         canvas.width = Math.max(1, Math.floor(width * dpr));
@@ -535,26 +1102,25 @@ const StarMap = forwardRef(function StarMap(
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
       }
-      if (!hasFitInitial) {
-        hasFitInitial = true;
-        const k = Math.min(width / 360, height / 180) * 0.9;
+      const starsCanvas = starsCanvasRef.current;
+      if (starsCanvas) {
+        starsCanvas.width = Math.max(1, Math.floor(width * dpr));
+        starsCanvas.height = Math.max(1, Math.floor(height * dpr));
+        starsCanvas.style.width = `${width}px`;
+        starsCanvas.style.height = `${height}px`;
+      }
+
+      const zoomBehavior = zoomRef.current;
+      if (zoomBehavior) {
+        const k = Math.min(width / 360, height / 180) * 0.7;
         const tx = (width - 360 * k) / 2;
         const ty = (height - 180 * k) / 2;
-        zoom.scaleExtent([k * 0.5, 20]);
         const initialTransform = d3.zoomIdentity.translate(tx, ty).scale(k);
         initialTransformRef.current = initialTransform;
-        d3overlay.call(zoom.transform, initialTransform);
-        if (resetZoomRef) {
-          resetZoomRef.current = () => {
-            const target = initialTransformRef.current;
-            if (!target) return;
-            d3overlay
-              .transition()
-              .duration(750)
-              .call(zoom.transform, target);
-          };
-        }
+        zoomBehavior.scaleExtent([k * 0.5, 20]);
+        d3.select(overlayRef.current).call(zoomBehavior.transform, initialTransform);
       }
+
       redraw();
       onTransformChangeRef.current?.(transformRef.current, width, height);
     });
@@ -566,9 +1132,17 @@ const StarMap = forwardRef(function StarMap(
       overlay.removeEventListener('mousemove', handleMouseMove);
       overlay.removeEventListener('mouseleave', handleMouseLeave);
       overlay.removeEventListener('click', handleClick);
+      overlay.removeEventListener('touchstart', handleTouchStart);
+      overlay.removeEventListener('touchmove', handleTouchMove);
+      overlay.removeEventListener('touchend', handleTouchEnd);
+      overlay.removeEventListener('touchcancel', handleTouchEnd);
       redrawRef.current = null;
       if (resetZoomRef) resetZoomRef.current = null;
       zoomRef.current = null;
+      if (starsAnimRafRef.current) {
+        cancelAnimationFrame(starsAnimRafRef.current);
+        starsAnimRafRef.current = null;
+      }
     };
   }, [resetZoomRef]);
 
@@ -590,6 +1164,17 @@ const StarMap = forwardRef(function StarMap(
           .transition()
           .duration(800)
           .ease(d3.easeCubicInOut)
+          .call(zoom.transform, target);
+      },
+      getCanvas: () => canvasRef.current,
+      resetZoom: () => {
+        const zoom = zoomRef.current;
+        const overlay = overlayRef.current;
+        const target = initialTransformRef.current;
+        if (!zoom || !overlay || !target) return;
+        d3.select(overlay)
+          .transition()
+          .duration(750)
           .call(zoom.transform, target);
       },
     }),
@@ -618,6 +1203,58 @@ const StarMap = forwardRef(function StarMap(
     comparePlanetsRef.current = comparePlanets;
     redrawRef.current?.();
   }, [comparePlanets]);
+
+  useEffect(() => {
+    heatmapModeRef.current = heatmapMode;
+    redrawRef.current?.();
+  }, [heatmapMode]);
+
+  useEffect(() => {
+    if (!heatmapMode) {
+      heatmapGridRef.current = null;
+      redrawRef.current?.();
+      return;
+    }
+
+    const cols = 200;
+    const rows = 100;
+    const bandwidth = 15;
+    const cellW = 360 / cols;
+    const cellH = 180 / rows;
+    const data = new Float32Array(cols * rows);
+
+    const kernelRadiusData = bandwidth * 3;
+    const b2 = 2 * bandwidth * bandwidth;
+
+    for (const p of planets) {
+      if (p.ra == null || p.dec == null) continue;
+      const px = p.ra;
+      const py = 90 - p.dec;
+      const gxMin = Math.max(0, Math.floor((px - kernelRadiusData) / cellW));
+      const gxMax = Math.min(cols - 1, Math.ceil((px + kernelRadiusData) / cellW));
+      const gyMin = Math.max(0, Math.floor((py - kernelRadiusData) / cellH));
+      const gyMax = Math.min(rows - 1, Math.ceil((py + kernelRadiusData) / cellH));
+      for (let gy = gyMin; gy <= gyMax; gy++) {
+        const cy = (gy + 0.5) * cellH;
+        const dyv = cy - py;
+        for (let gx = gxMin; gx <= gxMax; gx++) {
+          const cx = (gx + 0.5) * cellW;
+          const dxv = cx - px;
+          data[gy * cols + gx] += Math.exp(-(dxv * dxv + dyv * dyv) / b2);
+        }
+      }
+    }
+
+    heatmapGridRef.current = { cols, rows, data };
+    redrawRef.current?.();
+  }, [heatmapMode, planets]);
+
+  useEffect(() => {
+    sidebarOpenRef.current = sidebarOpen;
+    if (sidebarOpen && coordDisplayRef.current) {
+      coordDisplayRef.current.style.display = 'none';
+    }
+  }, [sidebarOpen]);
 
   useEffect(() => {
     selectedPlanetRef.current = selectedPlanet;
@@ -731,44 +1368,79 @@ const StarMap = forwardRef(function StarMap(
   }, [highlightHZ]);
 
   useEffect(() => {
-    const headerEl = document.getElementById('app-header');
-    const headerHeight = headerEl ? headerEl.offsetHeight + 'px' : '70px';
-    if (coordDisplayRef.current) {
-      coordDisplayRef.current.style.top = headerHeight;
-    }
+    showConstellationsRef.current = showConstellations;
+    redrawRef.current?.();
+  }, [showConstellations]);
+
+  useEffect(() => {
+    if (!resetZoomRef) return;
+    resetZoomRef.current = () => {
+      const zoom = zoomRef.current;
+      const overlay = overlayRef.current;
+      const target = initialTransformRef.current;
+      if (!zoom || !overlay || !target) return;
+      d3.select(overlay)
+        .transition()
+        .duration(750)
+        .call(zoom.transform, target);
+    };
+    return () => {
+      if (resetZoomRef) resetZoomRef.current = null;
+    };
+  }, [resetZoomRef]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const header = document.getElementById('app-header');
+    const overlay = overlayRef.current;
+    if (!overlay) return;
 
     const el = document.createElement('div');
     el.style.position = 'fixed';
-    el.style.top = headerHeight;
-    el.style.right = '16px';
-    el.style.zIndex = '99999';
-    el.style.pointerEvents = 'none';
-    el.style.background = 'rgba(10, 22, 40, 0.85)';
+    el.style.right = '0px';
+    el.style.left = 'auto';
+    el.style.background = 'rgba(10, 22, 40, 0.95)';
     el.style.border = '1px solid #1a3a6b';
     el.style.borderTop = 'none';
-    el.style.borderRadius = '0 0 6px 6px';
+    el.style.borderRight = 'none';
+    el.style.borderRadius = '0 0 0 6px';
     el.style.color = '#7ba7c9';
     el.style.fontFamily = 'IBM Plex Mono, monospace';
     el.style.fontSize = '11px';
-    el.style.padding = '6px 10px';
-    el.style.opacity = '0';
-    el.style.visibility = 'hidden';
-    el.style.transition = 'opacity 0.15s';
+    el.style.padding = '4px 10px';
+    el.style.zIndex = '10';
+    el.style.pointerEvents = 'none';
+    el.style.display = 'none';
     document.body.appendChild(el);
+    coordDisplayRef.current = el;
 
-    const handleMove = (event) => {
+    const updatePosition = () => {
+      const headerBottom = header
+        ? header.getBoundingClientRect().bottom
+        : 0;
+      el.style.top = `${headerBottom}px`;
+      el.style.right = '0px';
+      el.style.left = 'auto';
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+
+    const updateFromPoint = (clientX, clientY) => {
+      if (sidebarOpenRef.current) {
+        el.style.display = 'none';
+        return;
+      }
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      const { clientX, clientY } = event;
       const inside =
         clientX >= rect.left &&
         clientX <= rect.right &&
         clientY >= rect.top &&
         clientY <= rect.bottom;
       if (!inside) {
-        el.style.opacity = '0';
-        el.style.visibility = 'hidden';
+        el.style.display = 'none';
         return;
       }
       const mx = clientX - rect.left;
@@ -779,50 +1451,71 @@ const StarMap = forwardRef(function StarMap(
       const ra = xScaleRef.current.invert(dataX);
       const dec = yScaleRef.current.invert(dataY);
       el.textContent = `RA ${ra.toFixed(1)}°  Dec ${dec >= 0 ? '+' : ''}${dec.toFixed(1)}°`;
-      el.style.visibility = 'visible';
-      el.style.opacity = '1';
+      el.style.display = 'block';
     };
 
-    window.addEventListener('mousemove', handleMove);
+    const handleMove = (event) => {
+      updateFromPoint(event.clientX, event.clientY);
+    };
+
+    const handleTouchMove = (event) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      updateFromPoint(touch.clientX, touch.clientY);
+    };
+
+    const handleLeave = () => {
+      el.style.display = 'none';
+    };
+
+    overlay.addEventListener('mousemove', handleMove);
+    overlay.addEventListener('mouseleave', handleLeave);
+    overlay.addEventListener('touchmove', handleTouchMove, { passive: true });
+    overlay.addEventListener('touchend', handleLeave);
+    overlay.addEventListener('touchcancel', handleLeave);
 
     return () => {
-      window.removeEventListener('mousemove', handleMove);
+      overlay.removeEventListener('mousemove', handleMove);
+      overlay.removeEventListener('mouseleave', handleLeave);
+      overlay.removeEventListener('touchmove', handleTouchMove);
+      overlay.removeEventListener('touchend', handleLeave);
+      overlay.removeEventListener('touchcancel', handleLeave);
+      window.removeEventListener('resize', updatePosition);
       if (el.parentNode) el.parentNode.removeChild(el);
+      if (coordDisplayRef.current === el) coordDisplayRef.current = null;
     };
   }, []);
 
   return (
     <div ref={containerRef} className="fixed inset-0">
-      <canvas ref={canvasRef} className="absolute inset-0 block" />
-      <div ref={overlayRef} className={`absolute inset-0 z-10 cursor-${cursorMode}`} />
-      <div
-        id="coord-display"
-        ref={coordDisplayRef}
+      <canvas
+        ref={starsCanvasRef}
         style={{
-          position: 'fixed',
-          top: '72px',
-          right: '16px',
-          left: 'auto',
-          bottom: 'auto',
-          transform: 'none',
-          background: 'rgba(10, 22, 40, 0.85)',
-          border: '1px solid #1a3a6b',
-          borderTop: 'none',
-          borderRadius: '0 0 6px 6px',
-          color: '#7ba7c9',
-          fontFamily: 'IBM Plex Mono, monospace',
-          fontSize: '11px',
-          paddingTop: '6px',
-          paddingBottom: '6px',
-          paddingLeft: '10px',
-          paddingRight: '10px',
-          pointerEvents: 'none',
-          zIndex: 99999,
+          position: 'absolute',
+          inset: 0,
           display: 'block',
-          opacity: '0',
-          visibility: 'hidden',
-          transition: 'opacity 0.15s',
+          width: '100%',
+          height: '100%',
+          zIndex: 0,
+          backgroundColor: '#020818',
         }}
+      />
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          zIndex: 1,
+          backgroundColor: 'transparent',
+        }}
+      />
+      <div
+        ref={overlayRef}
+        className={`absolute inset-0 z-10 cursor-${cursorMode}`}
+        style={{ touchAction: 'none' }}
       />
       <div
         ref={tooltipRef}

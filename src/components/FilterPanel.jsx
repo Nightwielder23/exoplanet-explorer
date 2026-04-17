@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+
 const PLANET_TYPE_OPTIONS = [
   'all',
   'Hot Jupiter',
@@ -59,7 +61,70 @@ function Select({ value, onChange, options }) {
   );
 }
 
-function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpen, onToggle }) {
+function FilterPanel({
+  filters,
+  onFilterChange,
+  totalCount,
+  filteredCount,
+  isOpen,
+  onToggle,
+  planets = [],
+}) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchWrapRef = useRef(null);
+  const countRef = useRef(null);
+  const hasMountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    const el = countRef.current;
+    if (!el) return;
+    el.classList.remove('count-flash');
+    void el.offsetWidth;
+    el.classList.add('count-flash');
+    const onEnd = () => {
+      el.classList.remove('count-flash');
+      el.removeEventListener('animationend', onEnd);
+    };
+    el.addEventListener('animationend', onEnd);
+    return () => el.removeEventListener('animationend', onEnd);
+  }, [filteredCount]);
+
+  const suggestions = useMemo(() => {
+    const query = filters.searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    const out = [];
+    for (const p of planets) {
+      if (!p.name) continue;
+      if (p.name.toLowerCase().includes(query)) {
+        out.push(p.name);
+        if (out.length >= 6) break;
+      }
+    }
+    return out;
+  }, [planets, filters.searchQuery]);
+
+  useEffect(() => {
+    if (!showSuggestions) return;
+    const handlePointer = (e) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setShowSuggestions(false);
+    };
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [showSuggestions]);
+
   const handleReset = () => {
     Object.entries(DEFAULTS).forEach(([key, value]) => {
       onFilterChange(key, value);
@@ -75,13 +140,16 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
     filters.maxDistance !== 30000;
 
   return (
-    <div
-      className={`fixed left-0 top-1/2 z-30 -translate-y-1/2 transition-all duration-300 ease-in-out ${
-        isOpen ? 'translate-x-0' : '-translate-x-[220px]'
-      }`}
-    >
-      <div className="relative">
-        <div className="flex h-[560px] w-[220px] flex-col border-r border-border bg-surface p-4 shadow-2xl">
+    <>
+      <div
+        className={`fixed z-40 transition-transform duration-300 ease-out bottom-[60px] left-0 right-0 w-full md:bottom-auto md:right-auto md:left-0 md:top-1/2 md:w-auto md:z-30 md:duration-300 md:ease-in-out ${
+          isOpen
+            ? 'translate-y-0 md:translate-x-0 md:-translate-y-1/2'
+            : 'translate-y-full md:-translate-x-[220px] md:-translate-y-1/2'
+        }`}
+      >
+        <div className="relative">
+          <div className="flex max-h-[75vh] md:h-[560px] md:max-h-none w-full md:w-[220px] flex-col border-t md:border-t-0 md:border-r border-border bg-surface p-4 shadow-2xl">
           <h2 className="mb-4 font-display text-sm font-bold uppercase tracking-widest text-accent-cyan">
             Filters
           </h2>
@@ -89,14 +157,40 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
           <div className="flex flex-col gap-3 overflow-y-auto pr-1">
             <div>
               <Label>Search</Label>
-              <input
-                id="search-input"
-                type="text"
-                value={filters.searchQuery}
-                onChange={(e) => onFilterChange('searchQuery', e.target.value)}
-                placeholder="Planet name..."
-                className="w-full rounded border border-border bg-surface-elevated px-2 py-1.5 font-body text-sm text-text-primary placeholder:text-text-muted focus:border-accent-cyan focus:outline-none focus:ring-1 focus:ring-accent-cyan"
-              />
+              <div ref={searchWrapRef} className="relative">
+                <input
+                  id="search-input"
+                  type="text"
+                  value={filters.searchQuery}
+                  onChange={(e) => {
+                    onFilterChange('searchQuery', e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="Planet name..."
+                  autoComplete="off"
+                  className="w-full rounded border border-border bg-surface-elevated px-2 py-1.5 font-body text-sm text-text-primary placeholder:text-text-muted focus:border-accent-cyan focus:outline-none focus:ring-1 focus:ring-accent-cyan"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded border border-border bg-surface-elevated shadow-lg">
+                    {suggestions.map((name) => (
+                      <li key={name}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            onFilterChange('searchQuery', name);
+                            setShowSuggestions(false);
+                          }}
+                          className="block w-full truncate px-2 py-1.5 text-left font-body text-sm text-text-primary transition-colors hover:bg-background"
+                        >
+                          {name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
 
             <div>
@@ -169,29 +263,32 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
           </div>
 
           <div className="mt-4 border-t border-border pt-3 text-center font-body text-xs text-text-muted">
-            {filteredCount.toLocaleString()} / {totalCount.toLocaleString()} planets
+            <span ref={countRef}>{filteredCount.toLocaleString()}</span>
+            {' / '}
+            {totalCount.toLocaleString()} planets
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onToggle}
-          className="absolute left-full top-1/2 flex h-24 w-8 -translate-y-1/2 items-center justify-center border border-l-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated"
-          aria-label={isOpen ? 'Collapse filters' : 'Expand filters'}
-        >
-          <span className="block rotate-90 whitespace-nowrap font-display text-xs font-bold uppercase tracking-widest">
-            Filters
-          </span>
-          {!isOpen && hasActiveFilters && (
-            <span
-              className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-accent-cyan"
-              style={{ boxShadow: '0 0 8px rgba(0, 212, 255, 1)' }}
-              aria-label="Filters active"
-            />
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="absolute bottom-auto left-full top-1/2 hidden h-24 w-8 -translate-y-1/2 items-center justify-center border border-l-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated md:flex"
+            aria-label={isOpen ? 'Collapse filters' : 'Expand filters'}
+          >
+            <span className="block rotate-90 whitespace-nowrap font-display text-xs font-bold uppercase tracking-widest">
+              Filters
+            </span>
+            {!isOpen && hasActiveFilters && (
+              <span
+                className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-accent-cyan"
+                style={{ boxShadow: '0 0 8px rgba(0, 212, 255, 1)' }}
+                aria-label="Filters active"
+              />
+            )}
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

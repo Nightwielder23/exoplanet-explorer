@@ -158,7 +158,7 @@ function ComparePanel({ planets, onClose }) {
 
   return (
     <aside
-      className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface shadow-2xl ${
+      className={`fixed bottom-0 left-0 right-0 z-40 hidden md:block border-t border-border bg-surface shadow-2xl ${
         isClosing
           ? 'translate-y-0 compare-slide-out'
           : a && b

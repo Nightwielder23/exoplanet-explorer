@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #050a14;
+  --background: #000000;
   --surface: #0a1628;
   --surface-elevated: #0f2040;
   --border: #1a3a6b;
@@ -30,39 +30,108 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: var(--background);
+  background-color: #000000;
   color: var(--text-primary);
   font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
+  background-color: #000000;
   background-image:
-    radial-gradient(1px 1px at 12% 22%, rgba(232, 244, 253, 0.85), transparent 60%),
-    radial-gradient(1px 1px at 28% 68%, rgba(232, 244, 253, 0.55), transparent 60%),
-    radial-gradient(1.25px 1.25px at 47% 14%, rgba(0, 212, 255, 0.55), transparent 60%),
-    radial-gradient(1px 1px at 63% 82%, rgba(232, 244, 253, 0.7), transparent 60%),
-    radial-gradient(1px 1px at 78% 36%, rgba(232, 244, 253, 0.45), transparent 60%),
-    radial-gradient(1.5px 1.5px at 88% 74%, rgba(170, 68, 255, 0.45), transparent 60%),
-    radial-gradient(1px 1px at 8% 88%, rgba(232, 244, 253, 0.6), transparent 60%),
-    radial-gradient(1px 1px at 37% 42%, rgba(123, 167, 201, 0.5), transparent 60%),
-    radial-gradient(1px 1px at 92% 10%, rgba(232, 244, 253, 0.55), transparent 60%),
-    radial-gradient(ellipse at top, rgba(15, 32, 64, 0.55), transparent 60%),
-    radial-gradient(ellipse at bottom, rgba(10, 22, 40, 0.85), transparent 70%);
-  background-size:
-    320px 320px,
-    420px 420px,
-    260px 260px,
-    380px 380px,
-    300px 300px,
-    500px 500px,
-    240px 240px,
-    360px 360px,
-    280px 280px,
-    100% 100%,
-    100% 100%;
-  background-repeat: repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat,
-    no-repeat, no-repeat;
+    radial-gradient(1px 1px at 1% 5%, rgba(255, 255, 255, 0.9), transparent 2px),
+    radial-gradient(0.5px 0.5px at 3% 22%, rgba(220, 235, 255, 0.5), transparent 1px),
+    radial-gradient(1.25px 1.25px at 7% 48%, rgba(255, 255, 255, 0.8), transparent 2px),
+    radial-gradient(1px 1px at 6% 67%, rgba(255, 245, 220, 0.7), transparent 2px),
+    radial-gradient(0.75px 0.75px at 4% 83%, rgba(255, 255, 255, 0.55), transparent 2px),
+    radial-gradient(1px 1px at 8% 93%, rgba(220, 235, 255, 0.85), transparent 2px),
+    radial-gradient(1.5px 1.5px at 12% 8%, rgba(255, 255, 255, 0.65), transparent 3px),
+    radial-gradient(1px 1px at 14% 35%, rgba(255, 245, 220, 0.7), transparent 2px),
+    radial-gradient(0.75px 0.75px at 11% 58%, rgba(220, 235, 255, 0.45), transparent 2px),
+    radial-gradient(1.25px 1.25px at 16% 77%, rgba(255, 255, 255, 0.85), transparent 2px),
+    radial-gradient(0.5px 0.5px at 19% 14%, rgba(255, 245, 220, 0.5), transparent 1px),
+    radial-gradient(1px 1px at 22% 28%, rgba(255, 255, 255, 0.75), transparent 2px),
+    radial-gradient(1.75px 1.75px at 24% 46%, rgba(220, 235, 255, 0.8), transparent 3px),
+    radial-gradient(0.75px 0.75px at 21% 68%, rgba(255, 255, 255, 0.55), transparent 2px),
+    radial-gradient(1px 1px at 26% 88%, rgba(255, 245, 220, 0.65), transparent 2px),
+    radial-gradient(1.25px 1.25px at 30% 5%, rgba(220, 235, 255, 0.9), transparent 2px),
+    radial-gradient(0.5px 0.5px at 33% 26%, rgba(255, 255, 255, 0.4), transparent 1px),
+    radial-gradient(1px 1px at 31% 52%, rgba(255, 255, 255, 0.75), transparent 2px),
+    radial-gradient(1.5px 1.5px at 35% 71%, rgba(255, 245, 220, 0.8), transparent 3px),
+    radial-gradient(0.75px 0.75px at 38% 90%, rgba(220, 235, 255, 0.5), transparent 2px),
+    radial-gradient(1px 1px at 42% 12%, rgba(255, 255, 255, 0.85), transparent 2px),
+    radial-gradient(0.75px 0.75px at 44% 32%, rgba(255, 245, 220, 0.45), transparent 2px),
+    radial-gradient(2px 2px at 46% 58%, rgba(220, 235, 255, 0.95), transparent 3px),
+    radial-gradient(1px 1px at 43% 80%, rgba(255, 255, 255, 0.7), transparent 2px),
+    radial-gradient(0.5px 0.5px at 48% 93%, rgba(255, 245, 220, 0.4), transparent 1px),
+    radial-gradient(1.5px 1.5px at 52% 18%, rgba(255, 255, 255, 0.8), transparent 3px),
+    radial-gradient(1px 1px at 55% 40%, rgba(220, 235, 255, 0.65), transparent 2px),
+    radial-gradient(0.75px 0.75px at 58% 65%, rgba(255, 245, 220, 0.5), transparent 2px),
+    radial-gradient(1.25px 1.25px at 56% 88%, rgba(255, 255, 255, 0.85), transparent 2px),
+    radial-gradient(1px 1px at 62% 7%, rgba(220, 235, 255, 0.7), transparent 2px),
+    radial-gradient(0.75px 0.75px at 65% 24%, rgba(255, 245, 220, 0.45), transparent 2px),
+    radial-gradient(1.5px 1.5px at 68% 48%, rgba(255, 255, 255, 0.9), transparent 3px),
+    radial-gradient(1px 1px at 64% 72%, rgba(220, 235, 255, 0.65), transparent 2px),
+    radial-gradient(0.5px 0.5px at 70% 91%, rgba(255, 245, 220, 0.35), transparent 1px),
+    radial-gradient(1.25px 1.25px at 74% 15%, rgba(255, 255, 255, 0.8), transparent 2px),
+    radial-gradient(1px 1px at 76% 38%, rgba(220, 235, 255, 0.7), transparent 2px),
+    radial-gradient(0.75px 0.75px at 79% 60%, rgba(255, 245, 220, 0.5), transparent 2px),
+    radial-gradient(1.5px 1.5px at 77% 83%, rgba(255, 255, 255, 0.85), transparent 3px),
+    radial-gradient(1px 1px at 83% 9%, rgba(220, 235, 255, 0.65), transparent 2px),
+    radial-gradient(0.5px 0.5px at 86% 30%, rgba(255, 255, 255, 0.4), transparent 1px),
+    radial-gradient(1.25px 1.25px at 88% 54%, rgba(255, 245, 220, 0.7), transparent 2px),
+    radial-gradient(1px 1px at 84% 76%, rgba(255, 255, 255, 0.6), transparent 2px),
+    radial-gradient(0.75px 0.75px at 89% 95%, rgba(220, 235, 255, 0.5), transparent 2px),
+    radial-gradient(1.5px 1.5px at 93% 14%, rgba(255, 255, 255, 0.9), transparent 3px),
+    radial-gradient(1px 1px at 96% 41%, rgba(255, 245, 220, 0.55), transparent 2px),
+    radial-gradient(0.75px 0.75px at 92% 68%, rgba(220, 235, 255, 0.45), transparent 2px),
+    radial-gradient(1.25px 1.25px at 98% 87%, rgba(255, 255, 255, 0.75), transparent 2px),
+    radial-gradient(ellipse at top, rgba(15, 32, 64, 0.35), transparent 60%),
+    radial-gradient(ellipse at bottom, rgba(10, 22, 40, 0.7), transparent 70%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
   background-attachment: fixed;
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+body::before {
+  background-image:
+    radial-gradient(1.5px 1.5px at 15% 18%, rgba(255, 255, 255, 0.95), transparent 3px),
+    radial-gradient(1px 1px at 38% 42%, rgba(220, 235, 255, 0.9), transparent 2px),
+    radial-gradient(2px 2px at 60% 70%, rgba(255, 255, 255, 0.95), transparent 3px),
+    radial-gradient(1.25px 1.25px at 82% 30%, rgba(255, 245, 220, 0.85), transparent 2px),
+    radial-gradient(1px 1px at 25% 85%, rgba(255, 255, 255, 0.9), transparent 2px),
+    radial-gradient(1.5px 1.5px at 72% 12%, rgba(220, 235, 255, 0.9), transparent 3px);
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+
+body::after {
+  background-image:
+    radial-gradient(1.5px 1.5px at 50% 15%, rgba(255, 255, 255, 0.9), transparent 3px),
+    radial-gradient(1px 1px at 72% 55%, rgba(220, 235, 255, 0.85), transparent 2px),
+    radial-gradient(1.25px 1.25px at 18% 62%, rgba(255, 245, 220, 0.85), transparent 2px),
+    radial-gradient(1px 1px at 90% 82%, rgba(255, 255, 255, 0.9), transparent 2px),
+    radial-gradient(0.75px 0.75px at 35% 8%, rgba(220, 235, 255, 0.85), transparent 2px),
+    radial-gradient(1.5px 1.5px at 8% 40%, rgba(255, 255, 255, 0.9), transparent 3px);
+  animation: twinkle 4.8s ease-in-out 1.2s infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
 }
 
 #root {
@@ -307,4 +376,28 @@ input[type='range'] {
   box-shadow: 0 0 10px rgba(0, 212, 255, 0.6);
   transform: translateX(-100%);
   animation: skeletonProgressFill 3s ease-out forwards;
+}
+
+@keyframes toastInOut {
+  0% { opacity: 0; transform: translate(-50%, -8px); }
+  10% { opacity: 1; transform: translate(-50%, 0); }
+  90% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+.toast-anim {
+  animation: toastInOut 2.5s ease-out forwards;
+}
+
+@keyframes countFlash {
+  0% {
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.9), 0 0 3px rgba(0, 212, 255, 0.7);
+  }
+  100% {
+    color: inherit;
+    text-shadow: none;
+  }
+}
+.count-flash {
+  animation: countFlash 0.6s ease-out;
 }

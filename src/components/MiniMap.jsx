@@ -59,7 +59,7 @@ function MiniMap({ planets, transform, canvasWidth, canvasHeight }) {
 
   return (
     <div
-      className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center origin-bottom transition-transform duration-200 ease-out hover:scale-150"
+      className="fixed bottom-4 left-1/2 z-40 hidden md:flex -translate-x-1/2 flex-col items-center origin-bottom transition-transform duration-200 ease-out hover:scale-150"
       style={{ opacity: 0.8 }}
     >
       <div className="mb-1 font-display text-[9px] uppercase tracking-widest text-text-muted">
