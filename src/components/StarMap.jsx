@@ -114,36 +114,56 @@ function StarMap({
         ctx.stroke();
       }
 
+      const x0 = xScale(-2);
+      const x1 = xScale(362);
+      const y0 = yScale(92);
+      const y1 = yScale(-92);
+
+      ctx.globalAlpha = 0.7;
+      ctx.strokeStyle = '#1a4a8b';
+      ctx.lineWidth = 1 / t.k;
+      ctx.shadowBlur = 8 / t.k;
+      ctx.shadowColor = '#00d4ff';
+      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.shadowBlur = 0;
+
+      const cornerLen = 12 / t.k;
       ctx.strokeStyle = '#2a5a9b';
       ctx.lineWidth = 1 / t.k;
       ctx.globalAlpha = 0.9;
-      const x0 = xScale(0);
-      const x1 = xScale(360);
-      const y0 = yScale(90);
-      const y1 = yScale(-90);
-      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-
-      const tickLen = 6 / t.k;
       ctx.beginPath();
-      ctx.moveTo(x0 - tickLen, y0);
+      ctx.moveTo(x0 + cornerLen, y0);
       ctx.lineTo(x0, y0);
-      ctx.moveTo(x0, y0 - tickLen);
-      ctx.lineTo(x0, y0);
-      ctx.moveTo(x1, y0);
-      ctx.lineTo(x1 + tickLen, y0);
-      ctx.moveTo(x1, y0 - tickLen);
+      ctx.lineTo(x0, y0 + cornerLen);
+      ctx.moveTo(x1 - cornerLen, y0);
       ctx.lineTo(x1, y0);
-      ctx.moveTo(x0 - tickLen, y1);
+      ctx.lineTo(x1, y0 + cornerLen);
+      ctx.moveTo(x0 + cornerLen, y1);
       ctx.lineTo(x0, y1);
-      ctx.moveTo(x0, y1);
-      ctx.lineTo(x0, y1 + tickLen);
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x1 + tickLen, y1);
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x1, y1 + tickLen);
+      ctx.lineTo(x0, y1 - cornerLen);
+      ctx.moveTo(x1 - cornerLen, y1);
+      ctx.lineTo(x1, y1);
+      ctx.lineTo(x1, y1 - cornerLen);
       ctx.stroke();
 
-      ctx.font = `${14 / t.k}px IBM Plex Mono`;
+      ctx.fillStyle = '#00d4ff';
+      ctx.shadowBlur = 6 / t.k;
+      ctx.shadowColor = '#00d4ff';
+      const cornerDotR = 3 / t.k;
+      const cornerPts = [
+        [x0, y0],
+        [x1, y0],
+        [x0, y1],
+        [x1, y1],
+      ];
+      for (const [cx, cy] of cornerPts) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, cornerDotR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+
+      ctx.font = `bold ${18 / t.k}px IBM Plex Mono`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.globalAlpha = 1;
@@ -151,14 +171,51 @@ function StarMap({
       const labelX = xScale(180);
       const labelY = y0 - 8 / t.k;
       const labelMetrics = ctx.measureText(labelText);
-      const bgPadX = 6 / t.k;
-      const bgPadY = 4 / t.k;
+      const bgPadX = 12 / t.k;
+      const bgPadY = 6 / t.k;
       const bgW = labelMetrics.width + bgPadX * 2;
-      const bgH = 14 / t.k + bgPadY * 2;
-      ctx.fillStyle = 'rgba(5, 10, 20, 0.7)';
-      ctx.fillRect(labelX - bgW / 2, labelY - bgH / 2, bgW, bgH);
-      ctx.fillStyle = '#7ba7c9';
+      const bgH = 18 / t.k + bgPadY * 2;
+      const bgX = labelX - bgW / 2;
+      const bgY = labelY - bgH / 2;
+      const bgRadius = 4 / t.k;
+
+      ctx.fillStyle = 'rgba(0, 15, 30, 0.85)';
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(bgX, bgY, bgW, bgH, bgRadius);
+      } else {
+        ctx.rect(bgX, bgY, bgW, bgH);
+      }
+      ctx.fill();
+
+      if ('letterSpacing' in ctx) {
+        ctx.letterSpacing = '2px';
+      }
+      ctx.fillStyle = '#00d4ff';
+      ctx.shadowColor = '#00d4ff';
+      ctx.shadowBlur = 10 / t.k;
       ctx.fillText(labelText, labelX, labelY);
+      ctx.shadowBlur = 0;
+      if ('letterSpacing' in ctx) {
+        ctx.letterSpacing = '0px';
+      }
+
+      ctx.font = `${9 / t.k}px IBM Plex Mono`;
+      ctx.fillStyle = '#3d6080';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const raLabelOffset = 4 / t.k;
+      for (const ra of [0, 60, 120, 180, 240, 300, 360]) {
+        ctx.fillText(`${ra}°`, xScale(ra), y0 + raLabelOffset);
+      }
+
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const decLabelOffset = 4 / t.k;
+      for (const dec of [-60, -30, 0, 30, 60]) {
+        ctx.fillText(`${dec}°`, x0 + decLabelOffset, yScale(dec));
+      }
+
       ctx.textAlign = 'start';
       ctx.textBaseline = 'alphabetic';
 

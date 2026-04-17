@@ -39,7 +39,7 @@ function ToggleButton({ active, onClick, children, variant = 'cyan', title }) {
       type="button"
       onClick={onClick}
       title={title}
-      className={`flex-1 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-widest transition-colors ${
+      className={`control-btn flex-1 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-widest transition-colors ${
         active
           ? activeClass
           : 'bg-surface-elevated text-text-secondary hover:text-text-primary'
@@ -55,7 +55,6 @@ function MapControls({
   onColorModeChange,
   highlightHZ,
   onHighlightHZChange,
-  resetZoom,
 }) {
   const legend = colorMode === 'habitability' ? HABITABILITY_LEGEND : TYPE_LEGEND;
 
@@ -87,17 +86,6 @@ function MapControls({
         >
           Highlight HZ
         </ToggleButton>
-      </div>
-
-      <div className="mt-2 flex overflow-hidden rounded border border-border">
-        <button
-          type="button"
-          onClick={resetZoom}
-          title="Reset map to full sky view"
-          className="flex-1 bg-surface-elevated px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-widest text-text-secondary transition-colors hover:text-accent-cyan"
-        >
-          Reset Zoom
-        </button>
       </div>
 
       <ul className="mt-3 flex flex-col gap-1.5">

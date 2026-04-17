@@ -148,16 +148,7 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background font-body text-text-primary">
-      <header className="relative z-50 flex items-center justify-between overflow-hidden border-b border-border bg-surface px-6 py-4">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute left-0 right-0 h-px"
-          style={{
-            background:
-              'linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.8), transparent)',
-            animation: 'header-scan 6s linear infinite',
-          }}
-        />
+      <header className="header-scan-bar relative z-50 flex items-center justify-between border-b border-border bg-surface px-6 py-4">
         <div className="flex flex-col">
           <h1
             className="font-display text-2xl font-bold tracking-[0.2em] text-accent-cyan"
@@ -215,7 +206,6 @@ function App() {
         onColorModeChange={setColorMode}
         highlightHZ={highlightHZ}
         onHighlightHZChange={(val) => setHighlightHZ(val)}
-        resetZoom={() => resetZoomRef.current?.()}
       />
 
       <div className="relative z-40">
@@ -231,12 +221,21 @@ function App() {
         />
       </div>
 
+      <button
+        type="button"
+        onClick={() => resetZoomRef.current?.()}
+        title="Reset map to full sky view"
+        className="control-btn fixed bottom-16 right-4 z-40 flex items-center gap-2 rounded border border-border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-accent-cyan transition-colors hover:bg-surface-elevated"
+      >
+        Reset Zoom
+      </button>
+
       <div className="fixed bottom-4 right-4 z-40 flex items-end gap-2">
         <StatsPanel planets={filteredPlanets} />
         <div className="group relative">
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface font-display text-sm text-text-secondary transition-colors hover:border-accent-cyan hover:text-accent-cyan"
+            className="control-btn flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface font-display text-sm text-text-secondary transition-colors hover:border-accent-cyan hover:text-accent-cyan"
             aria-label="Show keyboard shortcuts"
           >
             ?
