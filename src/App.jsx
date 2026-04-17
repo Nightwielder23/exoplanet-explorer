@@ -1,12 +1,63 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useExoplanets } from './hooks/useExoplanets';
 import StarMap from './components/StarMap';
 import PlanetSidebar from './components/PlanetSidebar';
+import FilterPanel from './components/FilterPanel';
+import { getPlanetType, getHabitabilityZone } from './utils/planetClassifier';
 import './App.css';
+
+const KNOWN_DISCOVERY_METHODS = new Set([
+  'transit',
+  'radial velocity',
+  'direct imaging',
+  'microlensing',
+]);
 
 function App() {
   const { data, loading, error } = useExoplanets();
   const [selectedPlanet, setSelectedPlanet] = useState(null);
+  const [filters, setFilters] = useState({
+    planetType: 'all',
+    habitability: 'all',
+    discoveryMethod: 'all',
+    minDistance: 0,
+    maxDistance: 30000,
+    searchQuery: '',
+  });
+
+  const filteredPlanets = useMemo(() => {
+    if (!data) return [];
+    const query = filters.searchQuery.trim().toLowerCase();
+    const methodFilter = filters.discoveryMethod;
+
+    return data.filter((p) => {
+      if (filters.planetType !== 'all' && getPlanetType(p) !== filters.planetType) {
+        return false;
+      }
+      if (
+        filters.habitability !== 'all' &&
+        getHabitabilityZone(p) !== filters.habitability
+      ) {
+        return false;
+      }
+      if (methodFilter !== 'all') {
+        const raw = (p.discoveryMethod || '').toLowerCase();
+        const bucket = KNOWN_DISCOVERY_METHODS.has(raw)
+          ? p.discoveryMethod
+          : 'Other';
+        if (bucket.toLowerCase() !== methodFilter.toLowerCase()) return false;
+      }
+      if (p.distance != null) {
+        if (p.distance < filters.minDistance) return false;
+        if (p.distance > filters.maxDistance) return false;
+      }
+      if (query) {
+        const name = String(p.name ?? '').toLowerCase();
+        if (!name.includes(query)) return false;
+      }
+      return true;
+    });
+  }, [data, filters]);
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background font-body text-text-primary">
@@ -24,8 +75,13 @@ function App() {
             Planets Loaded
           </span>
           <span className="font-display text-xl font-bold text-accent-teal">
-            {loading ? 'Loading...' : data?.length.toLocaleString() ?? 0}
+            {loading ? 'Loading...' : filteredPlanets.length.toLocaleString()}
           </span>
+          {!loading && data && (
+            <span className="text-[10px] uppercase tracking-widest text-text-muted">
+              (of {data.length.toLocaleString()} total)
+            </span>
+          )}
         </div>
       </header>
 
@@ -45,11 +101,22 @@ function App() {
         )}
         {!loading && !error && data && (
           <StarMap
-            planets={data}
+            planets={filteredPlanets}
             onPlanetClick={(planet) => setSelectedPlanet(planet)}
           />
         )}
       </main>
+
+      <div className="relative z-40">
+        <FilterPanel
+          filters={filters}
+          onFilterChange={(key, val) =>
+            setFilters((prev) => ({ ...prev, [key]: val }))
+          }
+          totalCount={data?.length ?? 0}
+          filteredCount={filteredPlanets.length}
+        />
+      </div>
 
       <div className="relative z-50">
         <PlanetSidebar

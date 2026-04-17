@@ -5,14 +5,6 @@ import {
   getHabitabilityZone,
 } from '../utils/planetClassifier';
 
-const TYPE_LABELS = {
-  terrestrial: 'Terrestrial',
-  'super-earth': 'Super-Earth',
-  neptune: 'Neptune-like',
-  'gas-giant': 'Gas Giant',
-  unknown: 'Unknown',
-};
-
 function Row({ label, value }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border/40 py-2">
@@ -40,9 +32,8 @@ function PlanetSidebar({ planet, onClose }) {
   const isOpen = Boolean(planet);
   const p = displayPlanet;
 
-  const type = p ? getPlanetType(p) : 'unknown';
-  const typeColor = p ? getPlanetColor(p) : '#7ba7c9';
-  const typeLabel = TYPE_LABELS[type] ?? 'Unknown';
+  const typeLabel = p ? getPlanetType(p) : 'Unknown';
+  const typeColor = p ? getPlanetColor(p) : '#3d6080';
   const habitability = p ? getHabitabilityZone(p) : 'Unknown';
 
   const fmt = (val, suffix, digits) => {
