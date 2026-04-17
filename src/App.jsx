@@ -1,15 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useExoplanets } from './hooks/useExoplanets';
 import StarMap from './components/StarMap';
+import PlanetSidebar from './components/PlanetSidebar';
 import './App.css';
 
 function App() {
   const { data, loading, error } = useExoplanets();
   const [selectedPlanet, setSelectedPlanet] = useState(null);
-
-  useEffect(() => {
-    console.log('Selected planet:', selectedPlanet);
-  }, [selectedPlanet]);
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background font-body text-text-primary">
@@ -53,6 +50,13 @@ function App() {
           />
         )}
       </main>
+
+      <div className="relative z-50">
+        <PlanetSidebar
+          planet={selectedPlanet}
+          onClose={() => setSelectedPlanet(null)}
+        />
+      </div>
     </div>
   );
 }

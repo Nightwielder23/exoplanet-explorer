@@ -27,3 +27,11 @@ export function getPlanetColor(planet) {
       return COLOR_UNKNOWN;
   }
 }
+
+export function getHabitabilityZone(planet) {
+  const t = planet?.equilibriumTemp;
+  if (t == null || Number.isNaN(t)) return 'Unknown';
+  if (t < 200) return 'Too Cold';
+  if (t <= 320) return 'Habitable Zone';
+  return 'Too Hot';
+}
