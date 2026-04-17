@@ -118,6 +118,37 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpe
               />
             </div>
 
+            <div>
+              <Label>Distance (Parsecs)</Label>
+              <div className="dual-range">
+                <input
+                  type="range"
+                  min={0}
+                  max={30000}
+                  step={100}
+                  value={filters.minDistance}
+                  onChange={(e) => {
+                    const v = Math.min(Number(e.target.value), filters.maxDistance);
+                    onFilterChange('minDistance', v);
+                  }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={30000}
+                  step={100}
+                  value={filters.maxDistance}
+                  onChange={(e) => {
+                    const v = Math.max(Number(e.target.value), filters.minDistance);
+                    onFilterChange('maxDistance', v);
+                  }}
+                />
+              </div>
+              <div className="mt-1 font-body text-xs text-text-muted">
+                {filters.minDistance.toLocaleString()} pc — {filters.maxDistance.toLocaleString()} pc
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={handleReset}

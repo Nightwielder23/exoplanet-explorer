@@ -4,6 +4,7 @@ import StarMap from './components/StarMap';
 import PlanetSidebar from './components/PlanetSidebar';
 import FilterPanel from './components/FilterPanel';
 import MapControls from './components/MapControls';
+import StatsPanel from './components/StatsPanel';
 import { getPlanetType, getHabitabilityZone } from './utils/planetClassifier';
 import './App.css';
 
@@ -156,6 +157,8 @@ function App() {
       </main>
 
       <MapControls colorMode={colorMode} onColorModeChange={setColorMode} />
+
+      <StatsPanel planets={filteredPlanets} />
 
       <div className="relative z-40">
         <FilterPanel
