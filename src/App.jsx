@@ -63,7 +63,7 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background font-body text-text-primary">
-      <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
+      <header className="relative z-50 flex items-center justify-between border-b border-border bg-surface px-6 py-4">
         <div className="flex flex-col">
           <h1
             className="font-display text-2xl font-bold tracking-[0.2em] text-accent-cyan"
@@ -90,7 +90,7 @@ function App() {
         </div>
       </header>
 
-      <main className="relative flex flex-1 items-center justify-center overflow-hidden bg-background">
+      <main className="relative flex w-full h-full flex-1 items-center justify-center bg-background">
         {loading && (
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-border border-t-accent-cyan" />
         )}
