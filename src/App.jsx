@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useExoplanets } from './hooks/useExoplanets';
 import StarMap from './components/StarMap';
 import PlanetSidebar from './components/PlanetSidebar';
@@ -30,8 +30,12 @@ function App() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
 
+  const settersRef = useRef({ setSelectedPlanet, setFilterOpen, setFilters });
+  settersRef.current = { setSelectedPlanet, setFilterOpen, setFilters };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
+      const key = e.key;
       const target = e.target;
       const isEditable =
         target instanceof HTMLElement &&
@@ -39,24 +43,24 @@ function App() {
           target.tagName === 'TEXTAREA' ||
           target.isContentEditable);
 
-      if (e.key === 'Escape') {
-        setSelectedPlanet(null);
-        setFilterOpen(false);
+      if (key === 'Escape') {
+        settersRef.current.setSelectedPlanet(null);
+        settersRef.current.setFilterOpen(false);
         if (isEditable) target.blur();
         return;
       }
 
       if (isEditable) return;
 
-      if (e.key === 'f' || e.key === 'F') {
+      if (key === 'f' || key === 'F') {
         e.preventDefault();
-        setFilterOpen(true);
+        settersRef.current.setFilterOpen(true);
         setTimeout(() => {
           document.getElementById('search-input')?.focus();
         }, 0);
-      } else if (e.key === 'r' || e.key === 'R') {
+      } else if (key === 'r' || key === 'R') {
         e.preventDefault();
-        setFilters(DEFAULT_FILTERS);
+        settersRef.current.setFilters(DEFAULT_FILTERS);
       }
     };
 
