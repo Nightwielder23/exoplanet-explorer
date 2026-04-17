@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/nasa", "destination": "/api/nasa.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

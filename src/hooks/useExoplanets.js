@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const API_URL =
-  '/api/nasa/TAP/sync?query=select+pl_name,ra,dec,pl_masse,pl_rade,pl_orbper,sy_dist,disc_year,discoverymethod,st_spectype,pl_eqt+from+pscomppars+where+ra+is+not+null+and+dec+is+not+null&format=json';
+const QUERY_STRING =
+  'query=select+pl_name,ra,dec,pl_masse,pl_rade,pl_orbper,sy_dist,disc_year,discoverymethod,st_spectype,pl_eqt+from+pscomppars+where+ra+is+not+null+and+dec+is+not+null&format=json';
+
+const API_URL = import.meta.env.PROD
+  ? `/api/nasa?${QUERY_STRING}`
+  : `/api/nasa/TAP/sync?${QUERY_STRING}`;
 
 let cachedData = null;
 let inflightRequest = null;
