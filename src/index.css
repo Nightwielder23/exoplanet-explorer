@@ -99,3 +99,18 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--border) var(--surface);
 }
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+}
+
+.planet-hz-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse 2s ease-in-out infinite;
+}

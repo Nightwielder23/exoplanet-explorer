@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
-import { getPlanetColor } from '../utils/planetClassifier';
+import { getPlanetColor, getHabitabilityZone } from '../utils/planetClassifier';
+
+const HABITABILITY_COLORS = {
+  'Optimistic HZ': '#00ff88',
+  'Too Hot': '#ff4466',
+  'Too Cold': '#00d4ff',
+  Unknown: '#3d6080',
+};
 
 function StarMap({ planets, onPlanetClick, colorMode = 'type' }) {
   const containerRef = useRef(null);
@@ -49,7 +56,12 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type' }) {
     svg.selectAll('*').remove();
 
     const defs = svg.append('defs');
-    const colorFor = (p) => (colorMode === 'type' ? getPlanetColor(p) : getPlanetColor(p));
+    const colorFor = (p) => {
+      if (colorMode === 'habitability') {
+        return HABITABILITY_COLORS[getHabitabilityZone(p)] ?? HABITABILITY_COLORS.Unknown;
+      }
+      return getPlanetColor(p);
+    };
 
     const uniqueColors = Array.from(new Set(planets.map((p) => colorFor(p))));
     uniqueColors.forEach((color, idx) => {
@@ -87,6 +99,36 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type' }) {
 
     const zoomGroup = svg.append('g').attr('class', 'zoom-group');
 
+    const gridGroup = zoomGroup.append('g').attr('class', 'grid');
+    const decLines = [-60, -30, 0, 30, 60];
+    const raLines = [60, 120, 180, 240, 300];
+    gridGroup
+      .selectAll('line.dec')
+      .data(decLines)
+      .enter()
+      .append('line')
+      .attr('class', 'dec')
+      .attr('x1', 0)
+      .attr('x2', width)
+      .attr('y1', (d) => yScale(d))
+      .attr('y2', (d) => yScale(d))
+      .attr('stroke', '#1a3a6b')
+      .attr('stroke-width', 0.5)
+      .attr('opacity', 0.4);
+    gridGroup
+      .selectAll('line.ra')
+      .data(raLines)
+      .enter()
+      .append('line')
+      .attr('class', 'ra')
+      .attr('y1', 0)
+      .attr('y2', height)
+      .attr('x1', (d) => xScale(d))
+      .attr('x2', (d) => xScale(d))
+      .attr('stroke', '#1a3a6b')
+      .attr('stroke-width', 0.5)
+      .attr('opacity', 0.4);
+
     const tooltip = d3.select(tooltipRef.current);
 
     const dots = zoomGroup
@@ -94,7 +136,10 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type' }) {
       .data(planets.filter((p) => p.ra != null && p.dec != null))
       .enter()
       .append('circle')
-      .attr('class', 'planet')
+      .attr('class', (d) => {
+        const inHZ = getHabitabilityZone(d) === 'Optimistic HZ';
+        return `planet${colorMode === 'type' && inHZ ? ' planet-hz-pulse' : ''}`;
+      })
       .attr('cx', (d) => xScale(d.ra))
       .attr('cy', (d) => yScale(d.dec))
       .attr('r', 3)

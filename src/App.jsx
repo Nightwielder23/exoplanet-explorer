@@ -3,6 +3,7 @@ import { useExoplanets } from './hooks/useExoplanets';
 import StarMap from './components/StarMap';
 import PlanetSidebar from './components/PlanetSidebar';
 import FilterPanel from './components/FilterPanel';
+import MapControls from './components/MapControls';
 import { getPlanetType, getHabitabilityZone } from './utils/planetClassifier';
 import './App.css';
 
@@ -16,6 +17,7 @@ const KNOWN_DISCOVERY_METHODS = new Set([
 function App() {
   const { data, loading, error } = useExoplanets();
   const [selectedPlanet, setSelectedPlanet] = useState(null);
+  const [colorMode, setColorMode] = useState('type');
   const [filters, setFilters] = useState({
     planetType: 'all',
     habitability: 'all',
@@ -63,7 +65,10 @@ function App() {
     <div className="flex h-screen w-screen flex-col bg-background font-body text-text-primary">
       <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-4">
         <div className="flex flex-col">
-          <h1 className="font-display text-2xl font-bold tracking-[0.2em] text-accent-cyan">
+          <h1
+            className="font-display text-2xl font-bold tracking-[0.2em] text-accent-cyan"
+            style={{ textShadow: '0 0 10px rgba(0, 212, 255, 0.6), 0 0 3px rgba(0, 212, 255, 0.4)' }}
+          >
             EXOPLANET EXPLORER
           </h1>
           <span className="text-xs uppercase tracking-widest text-text-secondary">
@@ -103,9 +108,12 @@ function App() {
           <StarMap
             planets={filteredPlanets}
             onPlanetClick={(planet) => setSelectedPlanet(planet)}
+            colorMode={colorMode}
           />
         )}
       </main>
+
+      <MapControls colorMode={colorMode} onColorModeChange={setColorMode} />
 
       <div className="relative z-40">
         <FilterPanel

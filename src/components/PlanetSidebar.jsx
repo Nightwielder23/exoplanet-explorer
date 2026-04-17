@@ -64,7 +64,14 @@ function PlanetSidebar({ planet, onClose }) {
 
       {p && (
         <div className="flex h-full flex-col overflow-y-auto px-6 py-6">
-          <h2 className="pr-10 font-display text-2xl font-bold tracking-widest text-accent-cyan">
+          <h2
+            className="pr-10 font-display text-2xl font-bold tracking-widest text-accent-cyan"
+            style={
+              habitability === 'Optimistic HZ'
+                ? { textShadow: '0 0 12px rgba(0, 255, 136, 0.7), 0 0 4px rgba(0, 255, 136, 0.5)' }
+                : undefined
+            }
+          >
             {p.name ?? 'Unknown'}
           </h2>
 
