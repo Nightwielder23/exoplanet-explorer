@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { getPlanetType, getHabitabilityZone } from '../utils/planetClassifier';
 
+const METHOD_LABEL_OVERRIDES = {
+  'Transit Timing Variations': 'Transit Timing',
+};
+
+const shortMethod = (name) => METHOD_LABEL_OVERRIDES[name] ?? name;
+
 function StatCard({ label, value }) {
   return (
     <div className="rounded border border-border bg-surface-elevated px-2 py-1.5">
@@ -104,7 +110,7 @@ function StatsPanel({ planets }) {
       .attr('fill', '#7ba7c9')
       .attr('font-family', "'IBM Plex Mono', monospace")
       .attr('font-size', '10px')
-      .text((d) => d[0]);
+      .text((d) => shortMethod(d[0]));
 
     rows
       .append('rect')
@@ -131,7 +137,7 @@ function StatsPanel({ planets }) {
       : '—';
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end">
+    <div className="flex flex-col items-end">
       {isOpen && (
         <div className="mb-2 w-80 rounded border border-border bg-surface p-3 shadow-2xl">
           <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-widest text-accent-cyan">

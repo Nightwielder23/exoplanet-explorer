@@ -12,7 +12,13 @@ const HABITABILITY_COLORS = {
 const DEC_LINES = [-60, -30, 0, 30, 60];
 const RA_LINES = [60, 120, 180, 240, 300];
 
-function StarMap({ planets, onPlanetClick, colorMode = 'type', selectedPlanet = null }) {
+function StarMap({
+  planets,
+  onPlanetClick,
+  colorMode = 'type',
+  selectedPlanet = null,
+  highlightHZ = false,
+}) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
@@ -24,6 +30,8 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type', selectedPlanet = 
   const hoveredPlanetRef = useRef(null);
   const planetsRef = useRef([]);
   const colorByPlanetRef = useRef(new Map());
+  const hzByPlanetRef = useRef(new Map());
+  const highlightHZRef = useRef(highlightHZ);
   const xScaleRef = useRef(d3.scaleLinear().domain([0, 360]).range([0, 360]));
   const yScaleRef = useRef(d3.scaleLinear().domain([-90, 90]).range([180, 0]));
   const onPlanetClickRef = useRef(onPlanetClick);
@@ -42,6 +50,14 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type', selectedPlanet = 
     }
     return m;
   }, [planets, colorMode]);
+
+  const hzByPlanet = useMemo(() => {
+    const m = new Map();
+    for (const p of planets) {
+      m.set(p, getHabitabilityZone(p) === 'Optimistic HZ');
+    }
+    return m;
+  }, [planets]);
 
   useEffect(() => {
     const overlay = overlayRef.current;
@@ -143,6 +159,9 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type', selectedPlanet = 
       ctx.textAlign = 'start';
       ctx.textBaseline = 'alphabetic';
 
+      const hzHighlight = highlightHZRef.current;
+      const hzMap = hzByPlanetRef.current;
+
       const byColor = new Map();
       for (const p of validPlanets) {
         const color = colors.get(p) ?? '#3d6080';
@@ -154,9 +173,14 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type', selectedPlanet = 
         group.push(p);
       }
 
+      if (hzHighlight) {
+        ctx.globalAlpha = 0.2;
+        ctx.shadowBlur = 0;
+      }
+
       for (const [color, group] of byColor) {
         ctx.fillStyle = color;
-        if (useGlow) {
+        if (!hzHighlight && useGlow) {
           ctx.shadowBlur = 6;
           ctx.shadowColor = color;
         } else {
@@ -170,6 +194,25 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type', selectedPlanet = 
           ctx.arc(x, y, dotR, 0, Math.PI * 2);
         }
         ctx.fill();
+      }
+
+      if (hzHighlight) {
+        ctx.globalAlpha = 1;
+        const hzPlanets = validPlanets.filter(
+          (p) => getHabitabilityZone(p) === 'Optimistic HZ',
+        );
+        const hzR = 4 / t.k;
+        ctx.fillStyle = '#00ff88';
+        ctx.shadowBlur = 12 / t.k;
+        ctx.shadowColor = '#00ff88';
+        for (const p of hzPlanets) {
+          const x = xScale(p.ra);
+          const y = yScale(p.dec);
+          ctx.beginPath();
+          ctx.arc(x, y, hzR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
       }
 
       const hovered = hoveredPlanetRef.current;
@@ -386,8 +429,14 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type', selectedPlanet = 
     const valid = planets.filter((p) => p.ra != null && p.dec != null);
     planetsRef.current = valid;
     colorByPlanetRef.current = colorByPlanet;
+    hzByPlanetRef.current = hzByPlanet;
     redrawRef.current?.();
-  }, [planets, colorByPlanet]);
+  }, [planets, colorByPlanet, hzByPlanet]);
+
+  useEffect(() => {
+    highlightHZRef.current = highlightHZ;
+    redrawRef.current?.();
+  }, [highlightHZ]);
 
   return (
     <div ref={containerRef} className="fixed inset-0">

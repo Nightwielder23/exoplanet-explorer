@@ -28,6 +28,7 @@ function App() {
   const { data, loading, error } = useExoplanets();
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [colorMode, setColorMode] = useState('type');
+  const [highlightHZ, setHighlightHZ] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -152,13 +153,17 @@ function App() {
             onPlanetClick={(planet) => setSelectedPlanet(planet)}
             colorMode={colorMode}
             selectedPlanet={selectedPlanet}
+            highlightHZ={highlightHZ}
           />
         )}
       </main>
 
-      <MapControls colorMode={colorMode} onColorModeChange={setColorMode} />
-
-      <StatsPanel planets={filteredPlanets} />
+      <MapControls
+        colorMode={colorMode}
+        onColorModeChange={setColorMode}
+        highlightHZ={highlightHZ}
+        onHighlightHZChange={(val) => setHighlightHZ(val)}
+      />
 
       <div className="relative z-40">
         <FilterPanel
@@ -173,26 +178,29 @@ function App() {
         />
       </div>
 
-      <div className="group fixed bottom-4 right-4 z-40">
-        <button
-          type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface font-display text-sm text-text-secondary transition-colors hover:border-accent-cyan hover:text-accent-cyan"
-          aria-label="Show keyboard shortcuts"
-        >
-          ?
-        </button>
-        <div className="pointer-events-none absolute bottom-full right-0 mb-2 whitespace-nowrap rounded border border-border bg-surface px-3 py-2 font-body text-[11px] text-text-secondary opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-          <div className="mb-1 font-display text-[10px] uppercase tracking-widest text-text-muted">
-            Shortcuts
-          </div>
-          <div>
-            <span className="text-accent-cyan">Esc</span> — close panels
-          </div>
-          <div>
-            <span className="text-accent-cyan">F</span> — focus search
-          </div>
-          <div>
-            <span className="text-accent-cyan">R</span> — reset filters
+      <div className="fixed bottom-4 right-4 z-40 flex items-end gap-2">
+        <StatsPanel planets={filteredPlanets} />
+        <div className="group relative">
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface font-display text-sm text-text-secondary transition-colors hover:border-accent-cyan hover:text-accent-cyan"
+            aria-label="Show keyboard shortcuts"
+          >
+            ?
+          </button>
+          <div className="pointer-events-none absolute bottom-full right-0 mb-2 whitespace-nowrap rounded border border-border bg-surface px-3 py-2 font-body text-[11px] text-text-secondary opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+            <div className="mb-1 font-display text-[10px] uppercase tracking-widest text-text-muted">
+              Shortcuts
+            </div>
+            <div>
+              <span className="text-accent-cyan">Esc</span> — close panels
+            </div>
+            <div>
+              <span className="text-accent-cyan">F</span> — focus search
+            </div>
+            <div>
+              <span className="text-accent-cyan">R</span> — reset filters
+            </div>
           </div>
         </div>
       </div>
