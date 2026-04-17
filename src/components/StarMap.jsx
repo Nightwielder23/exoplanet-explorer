@@ -12,7 +12,7 @@ const HABITABILITY_COLORS = {
 const DEC_LINES = [-60, -30, 0, 30, 60];
 const RA_LINES = [60, 120, 180, 240, 300];
 
-function StarMap({ planets, onPlanetClick, colorMode = 'type' }) {
+function StarMap({ planets, onPlanetClick, colorMode = 'type', selectedPlanet = null }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const overlayRef = useRef(null);
@@ -28,6 +28,8 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type' }) {
   const yScaleRef = useRef(d3.scaleLinear().domain([-90, 90]).range([180, 0]));
   const onPlanetClickRef = useRef(onPlanetClick);
   const redrawRef = useRef(null);
+  const selectedPlanetRef = useRef(selectedPlanet);
+  const rafRef = useRef(null);
 
   const colorByPlanet = useMemo(() => {
     const m = new Map();
@@ -187,6 +189,33 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type' }) {
         ctx.fill();
       }
 
+      const selected = selectedPlanetRef.current;
+      if (selected && selected.ra != null && selected.dec != null) {
+        const color = colors.get(selected) ?? '#3d6080';
+        const sx = xScale(selected.ra);
+        const sy = yScale(selected.dec);
+        const pulse = Math.sin(Date.now() / 300);
+        const outerR = (14 + pulse * 2) / t.k;
+
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5 / t.k;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 10 / t.k, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 0.75 / t.k;
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath();
+        ctx.arc(sx, sy, outerR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.globalAlpha = 1;
+      }
+
       ctx.restore();
       ctx.shadowBlur = 0;
     };
@@ -322,6 +351,36 @@ function StarMap({ planets, onPlanetClick, colorMode = 'type' }) {
   useEffect(() => {
     onPlanetClickRef.current = onPlanetClick;
   }, [onPlanetClick]);
+
+  useEffect(() => {
+    selectedPlanetRef.current = selectedPlanet;
+
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    if (selectedPlanet) {
+      const tick = () => {
+        redrawRef.current?.();
+        if (selectedPlanetRef.current) {
+          rafRef.current = requestAnimationFrame(tick);
+        } else {
+          rafRef.current = null;
+        }
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    } else {
+      redrawRef.current?.();
+    }
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [selectedPlanet]);
 
   useEffect(() => {
     const valid = planets.filter((p) => p.ra != null && p.dec != null);

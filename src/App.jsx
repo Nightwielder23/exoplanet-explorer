@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useExoplanets } from './hooks/useExoplanets';
 import StarMap from './components/StarMap';
 import PlanetSidebar from './components/PlanetSidebar';
@@ -14,18 +14,55 @@ const KNOWN_DISCOVERY_METHODS = new Set([
   'microlensing',
 ]);
 
+const DEFAULT_FILTERS = {
+  planetType: 'all',
+  habitability: 'all',
+  discoveryMethod: 'all',
+  minDistance: 0,
+  maxDistance: 30000,
+  searchQuery: '',
+};
+
 function App() {
   const { data, loading, error } = useExoplanets();
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [colorMode, setColorMode] = useState('type');
-  const [filters, setFilters] = useState({
-    planetType: 'all',
-    habitability: 'all',
-    discoveryMethod: 'all',
-    minDistance: 0,
-    maxDistance: 30000,
-    searchQuery: '',
-  });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const target = e.target;
+      const isEditable =
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      if (e.key === 'Escape') {
+        setSelectedPlanet(null);
+        setFilterOpen(false);
+        if (isEditable) target.blur();
+        return;
+      }
+
+      if (isEditable) return;
+
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        setFilterOpen(true);
+        setTimeout(() => {
+          document.getElementById('search-input')?.focus();
+        }, 0);
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        setFilters(DEFAULT_FILTERS);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const filteredPlanets = useMemo(() => {
     if (!data) return [];
@@ -109,6 +146,7 @@ function App() {
             planets={filteredPlanets}
             onPlanetClick={(planet) => setSelectedPlanet(planet)}
             colorMode={colorMode}
+            selectedPlanet={selectedPlanet}
           />
         )}
       </main>
@@ -123,7 +161,33 @@ function App() {
           }
           totalCount={data?.length ?? 0}
           filteredCount={filteredPlanets.length}
+          isOpen={filterOpen}
+          onToggle={() => setFilterOpen((v) => !v)}
         />
+      </div>
+
+      <div className="group fixed bottom-4 right-4 z-40">
+        <button
+          type="button"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface font-display text-sm text-text-secondary transition-colors hover:border-accent-cyan hover:text-accent-cyan"
+          aria-label="Show keyboard shortcuts"
+        >
+          ?
+        </button>
+        <div className="pointer-events-none absolute bottom-full right-0 mb-2 whitespace-nowrap rounded border border-border bg-surface px-3 py-2 font-body text-[11px] text-text-secondary opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+          <div className="mb-1 font-display text-[10px] uppercase tracking-widest text-text-muted">
+            Shortcuts
+          </div>
+          <div>
+            <span className="text-accent-cyan">Esc</span> — close panels
+          </div>
+          <div>
+            <span className="text-accent-cyan">F</span> — focus search
+          </div>
+          <div>
+            <span className="text-accent-cyan">R</span> — reset filters
+          </div>
+        </div>
       </div>
 
       <div className="relative z-50">

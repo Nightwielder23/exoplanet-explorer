@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 const PLANET_TYPE_OPTIONS = [
   'all',
   'Hot Jupiter',
@@ -61,9 +59,7 @@ function Select({ value, onChange, options }) {
   );
 }
 
-function FilterPanel({ filters, onFilterChange, totalCount, filteredCount }) {
-  const [isOpen, setIsOpen] = useState(false);
-
+function FilterPanel({ filters, onFilterChange, totalCount, filteredCount, isOpen, onToggle }) {
   const handleReset = () => {
     Object.entries(DEFAULTS).forEach(([key, value]) => {
       onFilterChange(key, value);
@@ -86,6 +82,7 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount }) {
             <div>
               <Label>Search</Label>
               <input
+                id="search-input"
                 type="text"
                 value={filters.searchQuery}
                 onChange={(e) => onFilterChange('searchQuery', e.target.value)}
@@ -137,7 +134,7 @@ function FilterPanel({ filters, onFilterChange, totalCount, filteredCount }) {
 
         <button
           type="button"
-          onClick={() => setIsOpen((v) => !v)}
+          onClick={onToggle}
           className="absolute left-full top-1/2 flex h-24 w-8 -translate-y-1/2 items-center justify-center border border-l-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated"
           aria-label={isOpen ? 'Collapse filters' : 'Expand filters'}
         >
