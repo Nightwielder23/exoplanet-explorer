@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #050a14;
+  --surface: #0a1628;
+  --surface-elevated: #0f2040;
+  --border: #1a3a6b;
+  --accent-cyan: #00d4ff;
+  --accent-teal: #00ff88;
+  --accent-amber: #ffaa00;
+  --accent-red: #ff4466;
+  --accent-purple: #aa44ff;
+  --text-primary: #e8f4fd;
+  --text-secondary: #7ba7c9;
+  --text-muted: #3d6080;
+
+  color-scheme: dark;
+  color: var(--text-primary);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+body {
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, rgba(232, 244, 253, 0.85), transparent 60%),
+    radial-gradient(1px 1px at 28% 68%, rgba(232, 244, 253, 0.55), transparent 60%),
+    radial-gradient(1.25px 1.25px at 47% 14%, rgba(0, 212, 255, 0.55), transparent 60%),
+    radial-gradient(1px 1px at 63% 82%, rgba(232, 244, 253, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 78% 36%, rgba(232, 244, 253, 0.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 88% 74%, rgba(170, 68, 255, 0.45), transparent 60%),
+    radial-gradient(1px 1px at 8% 88%, rgba(232, 244, 253, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 37% 42%, rgba(123, 167, 201, 0.5), transparent 60%),
+    radial-gradient(1px 1px at 92% 10%, rgba(232, 244, 253, 0.55), transparent 60%),
+    radial-gradient(ellipse at top, rgba(15, 32, 64, 0.55), transparent 60%),
+    radial-gradient(ellipse at bottom, rgba(10, 22, 40, 0.85), transparent 70%);
+  background-size:
+    320px 320px,
+    420px 420px,
+    260px 260px,
+    380px 380px,
+    300px 300px,
+    500px 500px,
+    240px 240px,
+    360px 360px,
+    280px 280px,
+    100% 100%,
+    100% 100%;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat,
+    no-repeat, no-repeat;
+  background-attachment: fixed;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+  border: 1px solid var(--surface);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--surface);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--surface);
+}
