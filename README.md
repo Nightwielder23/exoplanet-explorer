@@ -8,6 +8,16 @@ This project started as a way to build something with the NASA API that actually
 
 **https://exoplanet-explorer-omega.vercel.app**
 
+## Screenshots
+
+![Full Map](FullMap.png)
+![Kepler Field Cluster](KelperFieldCluster.png)
+![Planet Sidebar](PlanetSidebar.png)
+![Heatmap](Heatmap.png)
+![Planet Habitability](Habitability.png)
+![Compared Planets](PlanetCompare.png)
+![Constellations](Constellations.png)
+
 ---
 
 ## What It Does
