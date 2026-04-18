@@ -1,8 +1,8 @@
 # Exoplanet Explorer
 
-Exoplanet Explorer is an interactive star map built on top of NASA's confirmed exoplanet archive. Every single one of the 6,160+ confirmed exoplanets is plotted as a glowing dot on a zoomable, pannable 2D celestial map using its actual right ascension and declination coordinates. Click any dot and you get the full data sheet for that planet. Filter, search, compare, and explore the entire archive in real time.
+Exoplanet Explorer is an interactive star map that visualizes all 6,160+ NASA confirmed exoplanets in real time. Every dot on the map is a real planet plotted by its actual celestial coordinates pulled live from the NASA Exoplanet Archive. You can zoom into dense discovery fields like the Kepler field where over 2,700 planets cluster in a tiny patch of sky, pan across the full observable sky, click any planet to read its complete data sheet, and filter the entire archive instantly.
 
-This started as a portfolio project with a simple goal: build something with the NASA API that actually looks and feels impressive, not just another APOD image viewer.
+This project started as a way to build something with the NASA API that actually looks and feels impressive rather than the typical APOD image viewer that every portfolio seems to have.
 
 ## Live Demo
 
@@ -10,55 +10,63 @@ This started as a portfolio project with a simple goal: build something with the
 
 ---
 
-## The Star Map
+## What It Does
 
-The core of the app is a canvas-based star map rendering thousands of planets at once with smooth zoom and pan. Planets glow in different colors depending on their type or temperature zone, and the map updates instantly as you apply filters. Zoom into the Kepler field in the upper right and you will see over 2,700 planets crammed into a tiny patch of sky, which is a direct result of how the Kepler Space Telescope observed a single fixed region for years.
+### The Star Map
 
-The map sits inside an observable sky boundary showing the full RA/Dec coordinate range. Outside the boundary is a live twinkling star field where stars randomly appear, brighten, and fade out across the background.
+The core of the app is a D3.js canvas star map rendering 6,000+ planets simultaneously with smooth zoom and pan. Planets glow in different colors depending on their type or temperature zone, and the entire map updates instantly as you apply filters with planets fading in and out as they enter and leave the active set. Outside the observable sky boundary, real twinkling background stars appear, brighten, and fade independently to create a living star field.
 
-## Exploring Planets
+### Exploring Planets
 
-Clicking any planet opens a detail panel on the right showing everything the NASA archive has on it: host star type, distance in parsecs, mass and radius in Earth units, orbital period, equilibrium temperature, discovery method, discovery year, constellation, and coordinates. At the bottom you get three similar planets based on type and radius, each clickable. Every planet also links directly to its NASA Archive page.
+Clicking any planet opens a detail panel showing everything the NASA archive has: host star type, distance in parsecs, mass and radius in Earth units, orbital period, equilibrium temperature, discovery method, year, constellation, and coordinates. At the bottom you get three similar planets based on type and radius, each clickable. Every planet links directly to its NASA Archive page and can be shared via URL since selecting a planet updates the address bar so you can paste the link and the correct planet auto-selects on load.
 
-Any planet can be shared via URL. Selecting a planet updates the address bar with a query parameter, so you can paste the link and the correct planet will auto-select when the page loads. The page title updates too.
+### Filtering and Search
 
-## Filtering and Search
+The filter panel lets you narrow the map by planet type, habitability zone, discovery method, and distance range. A search bar with live autocomplete matches planet names as you type. All filters combine and the map updates in real time. A badge on the filter tab shows how many filters are active.
 
-The filter panel on the left lets you narrow the map by planet type, habitability zone, discovery method, and distance range. There is also a search bar with live autocomplete that matches planet names as you type. All filters combine and the map updates in real time, fading planets in and out as they enter and leave the active set. A badge on the filter tab shows when any filter is active, and pressing R on the keyboard resets everything instantly.
+### Visualization Modes
 
-## Visualization Modes
+**By Type** colors planets by size category from Sub Earth up through Hot Jupiter.
 
-**By Type** colors planets by size category ranging from Sub Earth up through Hot Jupiter, each with its own color in the legend.
+**By Habitability** colors planets by equilibrium temperature zone showing optimistic habitable zone, too hot, too cold, and unknown.
 
-**By Habitability** colors planets by their equilibrium temperature zone: optimistic habitable zone, too hot, too cold, or unknown.
+**Highlight HZ** dims all non-habitable planets to 20% opacity and makes habitable zone planets glow bright green so you can immediately see where potentially habitable worlds concentrate.
 
-**Highlight HZ** dims all non-habitable planets to 20% opacity and makes habitable zone planets glow bright green, so you can immediately see where in the sky potentially habitable worlds are concentrated.
+**Heatmap** draws a kernel density overlay showing where planet discoveries cluster most densely across the sky. The Kepler field lights up dramatically.
 
-**Heatmap** draws a density overlay across the sky using kernel density estimation, showing blue-to-white gradients where planet discoveries are most concentrated. The Kepler field lights up dramatically.
+**Constellations** overlays five major constellations with labeled line patterns including Orion, Ursa Major, Cassiopeia, Scorpius, and Leo.
 
-**Constellations** overlays five major constellations with labeled line patterns: Orion, Ursa Major, Cassiopeia, Scorpius, and Leo.
+### Comparison Tool
 
-## Comparison Tool
+Clicking Compare and selecting two planets brings up a side by side panel showing all stats with winning values highlighted in green using sensible rules: closer distance wins, larger mass and radius win, earlier discovery year wins, and whichever temperature is closer to Earth equilibrium wins.
 
-Pressing the Compare button in the header activates comparison mode. Click any two planets and a panel slides up from the bottom showing them side by side with all their stats. Winning values are highlighted in green using sensible rules: closer distance wins, larger mass and radius win, earlier discovery year wins, and whichever temperature is closer to Earth's equilibrium wins.
+### Statistics Dashboard
 
-## Statistics Dashboard
+The stats panel shows live statistics based on your current filters including a discovery method breakdown chart, a discoveries by year sparkline from 1992 to today, and summary cards for most common type, average distance, habitable zone count, earliest discovery, and closest planet to Earth.
 
-The stats panel in the bottom right shows live statistics based on your current filter set. It includes a horizontal bar chart of the top five discovery methods, a sparkline chart showing the number of discoveries per year from 1992 to today with the peak year marked, and four summary cards showing the most common planet type, average distance, habitable zone count, and earliest discovery year. All stats update as you filter.
+### Other Features
 
-## Other Features
+A mini map in the bottom center shows the full sky at all times with a rectangle indicating your current viewport. The featured planet of the day changes daily. The random planet button picks a random planet from the current filtered set and flies the map to it with an animated zoom transition, then zooms back out when you close the sidebar. The export button captures the current canvas as a PNG. Keyboard shortcuts throughout: Esc closes panels, F focuses search, R resets filters, C toggles constellations, H toggles heatmap. Ambient background music and UI sound effects are available as optional toggles.
 
-The mini map in the bottom center shows the full sky at all times with a rectangle indicating your current viewport position. The featured planet of the day is shown in the header and changes daily. The random planet button picks a random planet from the current filtered set and flies the map to it with a smooth animated zoom transition. The export button captures the current canvas view and downloads it as a PNG. Keyboard shortcuts are listed in the help panel: Esc closes open panels, F focuses the search bar, R resets filters, C toggles constellations, and H toggles the heatmap.
+---
 
 ## How It Works
 
-The visualization runs on an HTML5 Canvas renderer rather than SVG, which is what makes 6,000+ animated glowing dots performant. The app uses a two-canvas system: one canvas handles the background star field animation and one handles all the planet rendering. They run independent animation loops so the twinkling stars never interfere with the planet layer.
+The visualization uses an HTML5 Canvas renderer instead of SVG which is what makes rendering 6,000+ animated glowing dots performant in real time. The app uses two separate canvas layers: one for the background star field animation and one for the planet rendering. They run independent animation loops so the twinkling stars never interfere with the planet layer.
 
-In production, a Vercel serverless function proxies all requests to the NASA Exoplanet Archive TAP API. The archive does not send CORS headers to browser clients, so the proxy is the only way to fetch data directly in a deployed web app without an intermediate backend.
+In production a Vercel serverless function proxies all requests to the NASA Exoplanet Archive TAP API since the archive does not send CORS headers to browser clients, making direct browser requests impossible without a proxy.
+
+---
 
 ## Tech Stack
 
-React 18, D3.js, Tailwind CSS, Axios, Vite, deployed on Vercel.
+React 18, D3.js, Tailwind CSS, Axios, Vite, Vercel
+
+## Data Source
+
+NASA Exoplanet Archive TAP API at exoplanetarchive.ipac.caltech.edu. No API key required. The archive updates automatically as NASA confirms new planets.
+
+---
 
 ## Running Locally
 
@@ -67,8 +75,16 @@ npm install
 npm run dev
 ```
 
-The dev server runs at http://localhost:5173 and proxies NASA API requests through /api/nasa via the Vite config so CORS is handled locally too.
+Runs at http://localhost:5173. The Vite dev server proxies NASA API requests through /api/nasa to handle CORS locally.
+
+## Deployment
+
+Deployed on Vercel. The serverless function at api/nasa.js proxies all archive requests in production. SPA routing is configured in vercel.json so direct URLs and planet sharing links work correctly on refresh.
 
 ---
 
-Built by Ayan Deshpande. Data sourced from the NASA Exoplanet Archive, updated automatically as new planets are confirmed.
+Built by Ayan D. Data sourced from the NASA Exoplanet Archive, updated automatically as new planets are confirmed.
+
+## License
+
+MIT License. See LICENSE for details.
