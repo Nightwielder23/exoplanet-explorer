@@ -8,6 +8,7 @@ import StatsPanel from './components/StatsPanel';
 import MiniMap from './components/MiniMap';
 import ComparePanel from './components/ComparePanel';
 import { getPlanetType, getHabitabilityZone } from './utils/planetClassifier';
+import { setSfxEnabled as setSfxEnabledModule, setSfxVolume as setSfxVolumeModule, playClick, playOpen } from './utils/sounds';
 import './App.css';
 
 const KNOWN_DISCOVERY_METHODS = new Set([
@@ -111,7 +112,7 @@ function MobileStatsSheet({ planets, onClose, isOpen, onExport, onResetZoom }) {
         </span>
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => { playClick(); onClose(); }}
           className="font-display text-lg text-text-secondary hover:text-accent-cyan"
           aria-label="Close statistics"
         >
@@ -155,6 +156,7 @@ function MobileStatsSheet({ planets, onClose, isOpen, onExport, onResetZoom }) {
         <button
           type="button"
           onClick={() => {
+            playClick();
             onExport?.();
             onClose();
           }}
@@ -165,6 +167,7 @@ function MobileStatsSheet({ planets, onClose, isOpen, onExport, onResetZoom }) {
         <button
           type="button"
           onClick={() => {
+            playClick();
             onResetZoom?.();
             onClose();
           }}
@@ -231,7 +234,7 @@ function MobileControlsSheet({
     return (
       <button
         type="button"
-        onClick={onClick}
+        onClick={() => { playClick(); onClick(); }}
         className={`flex-1 min-h-[44px] px-2 py-2 font-display text-[11px] font-bold uppercase tracking-widest transition-colors ${
           active
             ? activeClass
@@ -257,7 +260,7 @@ function MobileControlsSheet({
         </span>
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => { playClick(); onClose(); }}
           className="font-display text-lg text-text-secondary hover:text-accent-cyan"
           aria-label="Close controls"
         >
@@ -332,6 +335,23 @@ function App() {
   const [controlsSheetOpen, setControlsSheetOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
+  const [musicEnabled, setMusicEnabled] = useState(false);
+  const [sfxEnabled, setSfxEnabled] = useState(false);
+  const [musicVolume, setMusicVolume] = useState(0.15);
+  const [sfxVolume, setSfxVolume] = useState(0.35);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    setSfxEnabledModule(sfxEnabled);
+  }, [sfxEnabled]);
+
+  useEffect(() => {
+    setSfxVolumeModule(sfxVolume);
+  }, [sfxVolume]);
+
+  const toggleSfx = useCallback(() => {
+    setSfxEnabled((prev) => !prev);
+  }, []);
 
   const showToast = useCallback((message, color = 'cyan') => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -349,6 +369,46 @@ function App() {
     },
     [],
   );
+
+  useEffect(() => {
+    const audio = new Audio('/ambient.mp3');
+    audio.loop = true;
+    audio.volume = 0.15;
+    audioRef.current = audio;
+    console.log('[Music] Audio element created, src:', audio.src);
+    audio.addEventListener('error', (e) => console.log('[Music] Audio error:', e, audio.error));
+    audio.addEventListener('canplaythrough', () => console.log('[Music] Audio ready to play'));
+    return () => {
+      audio.pause();
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = musicVolume;
+  }, [musicVolume]);
+
+  const toggleMusic = useCallback(() => {
+    console.log('[Music] Button clicked, musicEnabled:', musicEnabled, 'audioRef:', audioRef.current);
+    console.log('[Music] Audio src:', audioRef.current?.src);
+    console.log('[Music] Audio readyState:', audioRef.current?.readyState);
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!musicEnabled) {
+      const playPromise = audio.play();
+      if (playPromise) {
+        playPromise
+          .then(() => console.log('[Music] Playing successfully'))
+          .catch((e) => console.log('[Music] Play failed:', e));
+      }
+      setMusicEnabled(true);
+    } else {
+      audio.pause();
+      setMusicEnabled(false);
+    }
+  }, [musicEnabled]);
+
   const [showPortraitWarning, setShowPortraitWarning] = useState(false);
   const [isClosingPortrait, setIsClosingPortrait] = useState(false);
   const [portraitFadingOut, setPortraitFadingOut] = useState(false);
@@ -368,10 +428,21 @@ function App() {
     }
   }, [loading])
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > window.innerHeight) {
+        setShowPortraitWarning(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const hasAnimatedCountRef = useRef(false);
   const countAnimationDoneRef = useRef(false);
 
   const handlePlanetClick = (planet) => {
+    playClick();
     if (compareMode) {
       setComparePlanets((prev) => {
         if (prev.some((p) => p.name === planet.name)) {
@@ -835,7 +906,7 @@ function App() {
           </div>
         </div>
       )}
-      <header id="app-header" className={`header-scan-bar relative z-[300] ${loading ? 'hidden' : 'flex'} items-center justify-between border-b border-border bg-background px-3 py-2 md:px-6 md:py-4`} style={{ backgroundColor: '#060d1a', visibility: loadingOverlayVisible ? 'hidden' : 'visible' }}>
+      <header id="app-header" className={`header-scan-bar relative z-[300] ${loading ? 'hidden' : 'flex'} items-center justify-between border-b border-border bg-background px-3 py-2 md:px-6 md:py-4`} style={{ backgroundColor: '#060d1a', visibility: (loadingOverlayVisible || showPortraitWarning || portraitFadingOut) ? 'hidden' : 'visible' }}>
         <div className="flex flex-col">
           <h1
             className="font-display text-base md:text-2xl font-bold tracking-[0.15em] md:tracking-[0.2em] text-accent-cyan"
@@ -850,7 +921,7 @@ function App() {
             {featuredPlanet && featuredPlanet.name && (
               <button
                 type="button"
-                onClick={() => setSelectedPlanet(featuredPlanet)}
+                onClick={() => { playClick(); setSelectedPlanet(featuredPlanet); }}
                 title="View today's featured planet"
                 className="hidden md:inline-flex cursor-pointer font-display text-[10px] font-bold uppercase tracking-widest text-accent-amber transition-colors hover:text-accent-amber hover:underline"
                 style={{ textShadow: '0 0 8px rgba(255, 170, 0, 0.6)' }}
@@ -864,6 +935,7 @@ function App() {
           <button
             type="button"
             onClick={() => {
+              playClick();
               if (compareMode) {
                 exitCompareMode();
               } else {
@@ -884,7 +956,7 @@ function App() {
           </button>
           <button
             type="button"
-            onClick={handleExport}
+            onClick={() => { playClick(); handleExport(); }}
             title="Download a PNG snapshot of the current sky map"
             className="control-btn hidden md:inline-flex rounded border border-border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-accent-cyan transition-colors"
           >
@@ -892,7 +964,7 @@ function App() {
           </button>
           <button
             type="button"
-            onClick={handleShare}
+            onClick={() => { playClick(); handleShare(); }}
             title="Copy a shareable link to the current view"
             className="control-btn hidden md:inline-flex rounded border border-border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-accent-cyan transition-colors"
           >
@@ -900,7 +972,68 @@ function App() {
           </button>
           <button
             type="button"
+            onClick={() => { playClick(); toggleMusic(); }}
+            title={musicEnabled ? 'Disable ambient music' : 'Enable ambient music'}
+            aria-pressed={musicEnabled}
+            className={`control-btn hidden md:inline-flex items-center gap-1.5 rounded border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
+              musicEnabled
+                ? 'border-accent-cyan text-accent-cyan'
+                : 'border-border text-accent-cyan'
+            }`}
+          >
+            {musicEnabled ? (
+              <span className="music-eq" aria-hidden="true">
+                <span /><span /><span />
+              </span>
+            ) : (
+              <span aria-hidden="true">♪</span>
+            )}
+            <span>{musicEnabled ? 'On' : 'Off'}</span>
+          </button>
+          {musicEnabled && (
+            <input
+              type="range"
+              min={0}
+              max={0.4}
+              step={0.01}
+              value={musicVolume}
+              onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+              title="Music volume"
+              aria-label="Music volume"
+              className="hidden md:inline-block music-volume-slider"
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => { playClick(); toggleSfx(); }}
+            title={sfxEnabled ? 'Disable sound effects' : 'Enable sound effects'}
+            aria-pressed={sfxEnabled}
+            className={`control-btn hidden md:inline-flex items-center gap-1.5 rounded border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
+              sfxEnabled
+                ? 'border-accent-cyan text-accent-cyan'
+                : 'border-border text-accent-cyan'
+            }`}
+          >
+            <span aria-hidden="true">{sfxEnabled ? '🔊' : '♪'}</span>
+            <span>SFX {sfxEnabled ? 'On' : 'Off'}</span>
+          </button>
+          {sfxEnabled && (
+            <input
+              type="range"
+              min={0}
+              max={0.7}
+              step={0.01}
+              value={sfxVolume}
+              onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+              title="SFX volume"
+              aria-label="SFX volume"
+              className="hidden md:inline-block music-volume-slider"
+            />
+          )}
+          <button
+            type="button"
             onClick={() => {
+              playClick();
               if (filteredPlanets.length === 0) return;
               const idx = Math.floor(Math.random() * filteredPlanets.length);
               const planet = filteredPlanets[idx];
@@ -936,7 +1069,7 @@ function App() {
         </div>
       </header>
 
-      <main className="relative flex w-full h-full flex-1 items-center justify-center" style={{ visibility: loadingOverlayVisible || showPortraitWarning ? 'hidden' : 'visible' }}>
+      <main className="relative flex w-full h-full flex-1 items-center justify-center" style={{ visibility: (loadingOverlayVisible || showPortraitWarning || portraitFadingOut) ? 'hidden' : 'visible' }}>
         {!loading && error && (
           <div className="flex flex-col items-center justify-center gap-3 text-center max-w-md px-6">
             {(() => {
@@ -947,7 +1080,7 @@ function App() {
                   <span className="font-display text-lg uppercase tracking-widest text-accent-red">{title}</span>
                   <p className="font-body text-sm text-text-secondary leading-relaxed">{detail}</p>
                   <button
-                    onClick={() => window.location.reload()}
+                    onClick={() => { playClick(); window.location.reload(); }}
                     className="mt-2 font-display text-xs tracking-widest uppercase border border-accent-red text-accent-red px-6 py-2 hover:bg-accent-red hover:text-background transition-colors duration-200"
                   >
                     Refresh
@@ -1003,7 +1136,7 @@ function App() {
         canvasHeight={canvasSize.height}
       />
 
-      <div className="relative z-40" style={{ visibility: loadingOverlayVisible ? 'hidden' : 'visible' }}>
+      <div className="relative z-40" style={{ visibility: (loadingOverlayVisible || showPortraitWarning || portraitFadingOut) ? 'hidden' : 'visible' }}>
         <FilterPanel
           filters={filters}
           onFilterChange={(key, val) =>
@@ -1017,10 +1150,10 @@ function App() {
         />
       </div>
 
-      <div className="fixed bottom-4 right-4 z-40 hidden md:flex md:flex-row items-end gap-2" style={{ visibility: loadingOverlayVisible ? 'hidden' : 'visible' }}>
+      <div className="fixed bottom-4 right-4 z-40 hidden md:flex md:flex-row items-end gap-2" style={{ visibility: (loadingOverlayVisible || showPortraitWarning || portraitFadingOut) ? 'hidden' : 'visible' }}>
         <button
           type="button"
-          onClick={() => starMapRef.current?.resetZoom()}
+          onClick={() => { playClick(); starMapRef.current?.resetZoom(); }}
           title="Reset map to full sky view"
           className="control-btn flex items-center gap-2 rounded border border-border bg-surface px-2 py-1 font-display text-[10px] font-bold uppercase tracking-widest text-accent-cyan transition-colors hover:bg-surface-elevated md:px-3 md:py-1.5 md:text-xs"
         >
@@ -1074,6 +1207,7 @@ function App() {
         <button
           type="button"
           onClick={() => {
+            playClick();
             setStatsSheetOpen(false);
             setControlsSheetOpen(false);
             setSelectedPlanet(null);
@@ -1088,6 +1222,7 @@ function App() {
         <button
           type="button"
           onClick={() => {
+            playClick();
             setFilterOpen(false);
             setControlsSheetOpen(false);
             setSelectedPlanet(null);
@@ -1102,6 +1237,7 @@ function App() {
         <button
           type="button"
           onClick={() => {
+            playClick();
             setFilterOpen(false);
             setStatsSheetOpen(false);
             setSelectedPlanet(null);

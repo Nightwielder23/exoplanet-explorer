@@ -1,4 +1,5 @@
 import { getPlanetColor } from '../utils/planetClassifier';
+import { playClick, playOpen } from '../utils/sounds';
 
 const TYPE_LEGEND = [
   { label: 'Hot Jupiter', sample: { radius: 12, orbitalPeriod: 3 } },
@@ -37,7 +38,7 @@ function ToggleButton({ active, onClick, children, variant = 'cyan', title }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => { playClick(); onClick(); }}
       title={title}
       className={`control-btn flex-1 px-1.5 py-1 md:px-3 md:py-1.5 font-display text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-colors ${
         active
@@ -135,7 +136,7 @@ function MapControls({
 
         <button
           type="button"
-          onClick={onToggle}
+          onClick={() => { playOpen(); onToggle(); }}
           className="absolute left-full top-1/2 flex h-24 w-8 -translate-y-1/2 items-center justify-center border border-l-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated"
           aria-label={isOpen ? 'Collapse controls' : 'Expand controls'}
         >

@@ -5,6 +5,7 @@ import {
   getHabitabilityZone,
   getConstellation,
 } from '../utils/planetClassifier';
+import { playClick } from '../utils/sounds';
 
 const PLANET_VIZ = {
   'Hot Jupiter': { radius: 32, swirl: true },
@@ -195,7 +196,7 @@ function PlanetSidebar({ planet, onClose, featuredPlanet, data = [], onSelectPla
     <div style={outerStyle} aria-hidden={!isOpen}>
       <button
         type="button"
-        onClick={onClose}
+        onClick={() => { playClick(); onClose(); }}
         aria-label="Close planet details"
         style={{
           position: 'absolute',
@@ -291,7 +292,7 @@ function PlanetSidebar({ planet, onClose, featuredPlanet, data = [], onSelectPla
                     <button
                       key={sp.name ?? `${sp.ra}-${sp.dec}-${sp.radius}`}
                       type="button"
-                      onClick={() => onSelectPlanet?.(sp)}
+                      onClick={() => { playClick(); onSelectPlanet?.(sp); }}
                       className="flex flex-col gap-1 rounded border border-border bg-surface-elevated px-2 py-1.5 text-left transition-colors hover:border-accent-cyan"
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -320,6 +321,7 @@ function PlanetSidebar({ planet, onClose, featuredPlanet, data = [], onSelectPla
               href={`https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(p.name)}`}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => playClick()}
               className="mt-6 inline-flex cursor-pointer items-center justify-center gap-1.5 self-start rounded border border-accent-cyan bg-surface-elevated px-3 py-1.5 font-display text-[11px] font-bold uppercase tracking-widest text-accent-cyan transition-colors hover:bg-accent-cyan hover:text-background"
             >
               <span>View on NASA Archive</span>

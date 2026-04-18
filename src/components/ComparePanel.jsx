@@ -4,6 +4,7 @@ import {
   getPlanetColor,
   getHabitabilityZone,
 } from '../utils/planetClassifier';
+import { playClick } from '../utils/sounds';
 
 const EARTH_EQ_TEMP = 255;
 
@@ -95,6 +96,7 @@ function ComparePanel({ planets, onClose }) {
 
   const handleClose = () => {
     if (isClosing) return;
+    playClick();
     setIsClosing(true);
     setTimeout(() => {
       onClose();

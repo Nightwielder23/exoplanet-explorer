@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getPlanetType, getPlanetColor } from '../utils/planetClassifier';
+import { playClick, playOpen } from '../utils/sounds';
 
 const PLANET_TYPE_OPTIONS = [
   'all',
@@ -50,6 +51,7 @@ function Select({ value, onChange, options }) {
   return (
     <select
       value={value}
+      onClick={() => playOpen()}
       onChange={(e) => onChange(e.target.value)}
       className="w-full cursor-pointer rounded border border-border bg-surface-elevated px-2 py-1.5 font-body text-sm text-text-primary focus:border-accent-cyan focus:outline-none focus:ring-1 focus:ring-accent-cyan"
     >
@@ -61,6 +63,100 @@ function Select({ value, onChange, options }) {
     </select>
   );
 }
+
+const DistanceSlider = ({ minVal, maxVal, onChange }) => {
+  const trackRef = useRef(null);
+  const MIN = 0;
+  const MAX = 30000;
+
+  const getPercent = (val) => ((val - MIN) / (MAX - MIN)) * 100;
+
+  const handleDrag = (e, handle) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const rect = track.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const rawVal = Math.round((percent * (MAX - MIN) + MIN) / 100) * 100;
+
+    if (handle === 'min') {
+      onChange('minDistance', Math.min(rawVal, maxVal - 100));
+    } else {
+      onChange('maxDistance', Math.max(rawVal, minVal + 100));
+    }
+  };
+
+  const startDrag = (handle) => (e) => {
+    e.preventDefault();
+    const move = (ev) => handleDrag(ev, handle);
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', move);
+    window.addEventListener('touchend', up);
+  };
+
+  const leftPercent = getPercent(minVal);
+  const rightPercent = getPercent(maxVal);
+
+  return (
+    <div style={{ padding: '12px 8px' }}>
+      <div ref={trackRef} style={{ position: 'relative', height: '4px', background: '#0c2038', borderRadius: '2px', margin: '10px 8px' }}>
+        <div style={{
+          position: 'absolute',
+          left: leftPercent + '%',
+          width: (rightPercent - leftPercent) + '%',
+          height: '100%',
+          background: '#00d4ff',
+          borderRadius: '2px'
+        }} />
+        <div
+          onMouseDown={startDrag('min')}
+          onTouchStart={startDrag('min')}
+          style={{
+            position: 'absolute',
+            left: leftPercent + '%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '14px',
+            height: '14px',
+            borderRadius: '50%',
+            background: '#00d4ff',
+            boxShadow: '0 0 6px rgba(0,212,255,0.6)',
+            cursor: 'grab',
+            zIndex: 2
+          }}
+        />
+        <div
+          onMouseDown={startDrag('max')}
+          onTouchStart={startDrag('max')}
+          style={{
+            position: 'absolute',
+            left: rightPercent + '%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '14px',
+            height: '14px',
+            borderRadius: '50%',
+            background: '#00d4ff',
+            boxShadow: '0 0 6px rgba(0,212,255,0.6)',
+            cursor: 'grab',
+            zIndex: 2
+          }}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'IBM Plex Mono', color: '#284060' }}>
+        <span>{minVal.toLocaleString()} pc</span>
+        <span>{maxVal.toLocaleString()} pc</span>
+      </div>
+    </div>
+  );
+};
 
 function FilterPanel({
   filters,
@@ -126,18 +222,19 @@ function FilterPanel({
   }, [showSuggestions]);
 
   const handleReset = () => {
+    playClick();
     Object.entries(DEFAULTS).forEach(([key, value]) => {
       onFilterChange(key, value);
     });
   };
 
-  const hasActiveFilters =
-    filters.planetType !== 'all' ||
-    filters.habitability !== 'all' ||
-    filters.discoveryMethod !== 'all' ||
-    filters.searchQuery !== '' ||
-    filters.minDistance !== 0 ||
-    filters.maxDistance !== 30000;
+  let activeCount = 0;
+  if (filters.planetType !== 'all') activeCount++;
+  if (filters.habitability !== 'all') activeCount++;
+  if (filters.discoveryMethod !== 'all') activeCount++;
+  if (filters.searchQuery !== '') activeCount++;
+  if (filters.minDistance !== 0 || filters.maxDistance !== 30000) activeCount++;
+  const hasActiveFilters = activeCount > 0;
 
   return (
     <>
@@ -240,35 +337,11 @@ function FilterPanel({
 
             <div>
               <Label>Distance (Parsecs)</Label>
-              <div className="dual-range">
-                <input
-                  type="range"
-                  min={0}
-                  max={30000}
-                  step={100}
-                  value={filters.minDistance}
-                  onChange={(e) => {
-                    const v = Math.min(Number(e.target.value), filters.maxDistance);
-                    onFilterChange('minDistance', v);
-                  }}
-                  className="cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-cyan"
-                />
-                <input
-                  type="range"
-                  min={0}
-                  max={30000}
-                  step={100}
-                  value={filters.maxDistance}
-                  onChange={(e) => {
-                    const v = Math.max(Number(e.target.value), filters.minDistance);
-                    onFilterChange('maxDistance', v);
-                  }}
-                  className="cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-cyan"
-                />
-              </div>
-              <div className="mt-1 font-body text-xs text-text-muted">
-                {filters.minDistance.toLocaleString()} pc — {filters.maxDistance.toLocaleString()} pc
-              </div>
+              <DistanceSlider
+                minVal={filters.minDistance}
+                maxVal={filters.maxDistance}
+                onChange={onFilterChange}
+              />
             </div>
 
             <button
@@ -289,19 +362,21 @@ function FilterPanel({
 
           <button
             type="button"
-            onClick={onToggle}
+            onClick={() => { playOpen(); onToggle(); }}
             className="absolute bottom-auto left-full top-1/2 hidden h-24 w-8 -translate-y-1/2 items-center justify-center border border-l-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated md:flex"
             aria-label={isOpen ? 'Collapse filters' : 'Expand filters'}
           >
             <span className="block rotate-90 whitespace-nowrap font-display text-xs font-bold uppercase tracking-widest">
               Filters
             </span>
-            {!isOpen && hasActiveFilters && (
+            {!isOpen && activeCount > 0 && (
               <span
-                className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-accent-cyan"
-                style={{ boxShadow: '0 0 8px rgba(0, 212, 255, 1)' }}
-                aria-label="Filters active"
-              />
+                className="absolute -right-2 -top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-accent-cyan font-display text-[10px] font-bold text-background"
+                style={{ boxShadow: '0 0 8px rgba(0, 212, 255, 0.9)' }}
+                aria-label={`${activeCount} active filter${activeCount === 1 ? '' : 's'}`}
+              >
+                {activeCount > 9 ? '9+' : activeCount}
+              </span>
             )}
           </button>
         </div>

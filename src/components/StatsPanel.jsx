@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { getPlanetType, getHabitabilityZone } from '../utils/planetClassifier';
+import { playClick, playOpen } from '../utils/sounds';
 
 const METHOD_LABEL_OVERRIDES = {
   'Transit Timing Variations': 'Transit Timing',
@@ -320,7 +321,7 @@ function StatsPanel({ planets }) {
 
       <button
         type="button"
-        onClick={() => setIsOpen((v) => !v)}
+        onClick={() => { playOpen(); setIsOpen((v) => !v); }}
         className="control-btn flex items-center gap-2 rounded border border-border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-accent-cyan transition-colors hover:bg-surface-elevated"
         aria-label={isOpen ? 'Collapse stats' : 'Expand stats'}
       >
