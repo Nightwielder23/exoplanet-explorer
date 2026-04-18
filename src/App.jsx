@@ -226,6 +226,12 @@ function MobileControlsSheet({
   const legend =
     colorMode === 'habitability' ? HABITABILITY_LEGEND_MOBILE : TYPE_LEGEND_MOBILE;
 
+  const hasMounted = useRef(false);
+  useEffect(() => {
+    const t = setTimeout(() => { hasMounted.current = true; }, 100);
+    return () => clearTimeout(t);
+  }, []);
+
   const toggleBtn = (active, onClick, children, variant = 'cyan') => {
     const activeClass =
       variant === 'teal'
@@ -248,9 +254,7 @@ function MobileControlsSheet({
 
   return (
     <div
-      className={`fixed left-0 right-0 z-40 flex max-h-[75vh] flex-col overflow-y-auto border-t border-border bg-surface md:hidden transition-transform duration-300 ease-out ${
-        isOpen ? 'translate-y-0' : 'translate-y-full'
-      }`}
+      className={`fixed left-0 right-0 z-40 flex max-h-[75vh] flex-col overflow-y-auto border-t border-border bg-surface md:hidden ${hasMounted.current ? 'transition-transform duration-300 ease-out' : ''} ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
       style={{ bottom: 60 }}
       aria-hidden={!isOpen}
     >
@@ -330,7 +334,7 @@ function App() {
   const [showConstellations, setShowConstellations] = useState(false);
   const [heatmapMode, setHeatmapMode] = useState(false);
   const [displayCount, setDisplayCount] = useState(0);
-  const [controlsOpen, setControlsOpen] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [statsSheetOpen, setStatsSheetOpen] = useState(false);
   const [controlsSheetOpen, setControlsSheetOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -413,6 +417,8 @@ function App() {
   const [isClosingPortrait, setIsClosingPortrait] = useState(false);
   const [portraitFadingOut, setPortraitFadingOut] = useState(false);
   const [loadingOverlayVisible, setLoadingOverlayVisible] = useState(true);
+  const userHasInteractedRef = useRef(false);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
     if (!loading) {
@@ -423,20 +429,25 @@ function App() {
         setShowPortraitWarning(true)
         setLoadingOverlayVisible(false)
       } else {
-        setTimeout(() => setLoadingOverlayVisible(false), 100)
+        setTimeout(() => setLoadingOverlayVisible(false), 0)
       }
     }
   }, [loading])
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > window.innerHeight) {
-        setShowPortraitWarning(false)
+      const isPortrait = window.innerHeight > window.innerWidth
+      if (!isPortrait && showPortraitWarning) {
+        setPortraitFadingOut(true)
+        setTimeout(() => {
+          setShowPortraitWarning(false)
+          setPortraitFadingOut(false)
+        }, 400)
       }
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  }, [showPortraitWarning])
 
   const hasAnimatedCountRef = useRef(false);
   const countAnimationDoneRef = useRef(false);
@@ -865,13 +876,13 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col font-body text-text-primary" style={{ backgroundColor: '#000306' }}>
+    <div className="flex h-screen w-screen flex-col font-body text-text-primary" style={{ backgroundColor: '#000306' }} onClick={() => { userHasInteractedRef.current = true; forceUpdate(n => n + 1); }}>
       {isMobileDevice && showPortraitWarning && (
         <div style={{
           position: 'fixed', inset: 0,
           zIndex: 9998,
           opacity: portraitFadingOut ? 0 : 1,
-          transition: portraitFadingOut ? 'opacity 0.4s ease-out' : 'none',
+          transition: 'opacity 0.4s ease-out',
           pointerEvents: showPortraitWarning ? 'all' : 'none',
           background: 'rgba(0,0,0,0.97)',
           display: 'flex', flexDirection: 'column',
@@ -898,6 +909,8 @@ function App() {
                   setShowPortraitWarning(false);
                   setPortraitFadingOut(false);
                 }, 400);
+                userHasInteractedRef.current = true;
+                forceUpdate(n => n + 1);
               }}
               style={{ fontFamily: 'Orbitron', color: '#7ba7c9', border: '1px solid #1a3a6b', background: 'transparent', padding: '0.5rem 1.5rem', fontSize: '0.75rem', cursor: 'pointer', letterSpacing: '0.1em' }}
             >
@@ -1069,7 +1082,7 @@ function App() {
         </div>
       </header>
 
-      <main className="relative flex w-full h-full flex-1 items-center justify-center" style={{ visibility: (loadingOverlayVisible || showPortraitWarning || portraitFadingOut) ? 'hidden' : 'visible' }}>
+      <main className="relative flex w-full h-full flex-1 items-center justify-center">
         {!loading && error && (
           <div className="flex flex-col items-center justify-center gap-3 text-center max-w-md px-6">
             {(() => {
@@ -1090,10 +1103,10 @@ function App() {
             })()}
           </div>
         )}
-        {!loading && !error && data && (
+        <div style={{ visibility: (!data || loading || error) ? 'hidden' : 'visible' }}>
           <StarMap
             ref={starMapRef}
-            planets={filteredPlanets}
+            planets={data ? filteredPlanets : []}
             onPlanetClick={handlePlanetClick}
             colorMode={colorMode}
             selectedPlanet={selectedPlanet}
@@ -1113,21 +1126,23 @@ function App() {
               );
             }}
           />
-        )}
+        </div>
       </main>
 
-      <MapControls
-        colorMode={colorMode}
-        onColorModeChange={setColorMode}
-        highlightHZ={highlightHZ}
-        onHighlightHZChange={(val) => setHighlightHZ(val)}
-        heatmapMode={heatmapMode}
-        onHeatmapChange={setHeatmapMode}
-        showConstellations={showConstellations}
-        onConstellationsChange={setShowConstellations}
-        isOpen={controlsOpen}
-        onToggle={() => setControlsOpen((v) => !v)}
-      />
+      {(window.innerWidth >= 768 || userHasInteractedRef.current) && (
+        <MapControls
+          colorMode={colorMode}
+          onColorModeChange={setColorMode}
+          highlightHZ={highlightHZ}
+          onHighlightHZChange={(val) => setHighlightHZ(val)}
+          heatmapMode={heatmapMode}
+          onHeatmapChange={setHeatmapMode}
+          showConstellations={showConstellations}
+          onConstellationsChange={setShowConstellations}
+          isOpen={controlsOpen}
+          onToggle={() => setControlsOpen((v) => !v)}
+        />
+      )}
 
       <MiniMap
         planets={filteredPlanets}
@@ -1136,19 +1151,21 @@ function App() {
         canvasHeight={canvasSize.height}
       />
 
-      <div className="relative z-40" style={{ visibility: (loadingOverlayVisible || showPortraitWarning || portraitFadingOut) ? 'hidden' : 'visible' }}>
-        <FilterPanel
-          filters={filters}
-          onFilterChange={(key, val) =>
-            setFilters((prev) => ({ ...prev, [key]: val }))
-          }
-          totalCount={data?.length ?? 0}
-          filteredCount={filteredPlanets.length}
-          isOpen={filterOpen}
-          onToggle={() => setFilterOpen((v) => !v)}
-          planets={data ?? []}
-        />
-      </div>
+      {!showPortraitWarning && !portraitFadingOut && (
+        <div className="relative z-40" style={{ visibility: loadingOverlayVisible ? 'hidden' : 'visible' }}>
+          <FilterPanel
+            filters={filters}
+            onFilterChange={(key, val) =>
+              setFilters((prev) => ({ ...prev, [key]: val }))
+            }
+            totalCount={data?.length ?? 0}
+            filteredCount={filteredPlanets.length}
+            isOpen={filterOpen}
+            onToggle={() => setFilterOpen((v) => !v)}
+            planets={data ?? []}
+          />
+        </div>
+      )}
 
       <div className="fixed bottom-4 right-4 z-40 hidden md:flex md:flex-row items-end gap-2" style={{ visibility: (loadingOverlayVisible || showPortraitWarning || portraitFadingOut) ? 'hidden' : 'visible' }}>
         <button
@@ -1194,7 +1211,7 @@ function App() {
         </div>
       </div>
 
-      {!loading && !showPortraitWarning && (
+      {!loading && !loadingOverlayVisible && !showPortraitWarning && !portraitFadingOut && (
       <div
         className="fixed bottom-0 left-0 right-0 flex items-stretch md:hidden"
         style={{
@@ -1252,28 +1269,32 @@ function App() {
       </div>
       )}
 
-      <MobileStatsSheet
-        planets={filteredPlanets}
-        isOpen={statsSheetOpen}
-        onClose={() => setStatsSheetOpen(false)}
-        onExport={handleExport}
-        onResetZoom={() => starMapRef.current?.resetZoom()}
-      />
+      {!showPortraitWarning && !portraitFadingOut && (
+        <MobileStatsSheet
+          planets={filteredPlanets}
+          isOpen={statsSheetOpen}
+          onClose={() => setStatsSheetOpen(false)}
+          onExport={handleExport}
+          onResetZoom={() => starMapRef.current?.resetZoom()}
+        />
+      )}
 
-      <MobileControlsSheet
-        isOpen={controlsSheetOpen}
-        onClose={() => setControlsSheetOpen(false)}
-        colorMode={colorMode}
-        onColorModeChange={setColorMode}
-        highlightHZ={highlightHZ}
-        onHighlightHZChange={setHighlightHZ}
-        heatmapMode={heatmapMode}
-        onHeatmapChange={setHeatmapMode}
-        showConstellations={showConstellations}
-        onConstellationsChange={setShowConstellations}
-      />
+      {!showPortraitWarning && !portraitFadingOut && (
+        <MobileControlsSheet
+          isOpen={controlsSheetOpen}
+          onClose={() => setControlsSheetOpen(false)}
+          colorMode={colorMode}
+          onColorModeChange={setColorMode}
+          highlightHZ={highlightHZ}
+          onHighlightHZChange={setHighlightHZ}
+          heatmapMode={heatmapMode}
+          onHeatmapChange={setHeatmapMode}
+          showConstellations={showConstellations}
+          onConstellationsChange={setShowConstellations}
+        />
+      )}
 
-      {!loading && selectedPlanet && (
+      {!loading && selectedPlanet && !showPortraitWarning && !portraitFadingOut && (
         <PlanetSidebar
           planet={selectedPlanet}
           featuredPlanet={featuredPlanet}
@@ -1328,7 +1349,7 @@ function App() {
           inset: 0,
           zIndex: 9997,
           opacity: loadingOverlayVisible ? 1 : 0,
-          transition: isPortraitMobile ? 'none' : 'opacity 0.6s ease-out',
+          transition: 'none',
           pointerEvents: loadingOverlayVisible ? 'all' : 'none',
           backgroundColor: '#000306',
         }}

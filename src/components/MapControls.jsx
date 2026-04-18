@@ -1,5 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { getPlanetColor } from '../utils/planetClassifier';
 import { playClick, playOpen } from '../utils/sounds';
+
+const isMobile = window.innerWidth < 768 || /iPhone|iPad|Android/i.test(navigator.userAgent);
 
 const TYPE_LEGEND = [
   { label: 'Hot Jupiter', sample: { radius: 12, orbitalPeriod: 3 } },
@@ -65,11 +68,22 @@ function MapControls({
 }) {
   const legend = colorMode === 'habitability' ? HABITABILITY_LEGEND : TYPE_LEGEND;
 
+  const hasMounted = useRef(false);
+  useEffect(() => {
+    if (isMobile) {
+      const timer = setTimeout(() => { hasMounted.current = true; }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      hasMounted.current = true;
+    }
+  }, []);
+
   return (
     <div
-      className={`fixed bottom-4 left-0 z-30 hidden md:block transition-transform duration-300 ease-in-out ${
+      className={`fixed bottom-4 left-0 z-30 hidden md:block ${
         isOpen ? 'translate-x-0' : '-translate-x-[200px]'
       }`}
+      style={{ transition: hasMounted.current ? 'all 0.3s ease' : 'none' }}
     >
       <div className="relative">
         <div className="w-[200px] rounded-r border border-l-0 border-border bg-surface/90 p-3 shadow-2xl backdrop-blur">
