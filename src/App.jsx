@@ -945,7 +945,7 @@ function App() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center gap-2 flex-nowrap">
           <button
             type="button"
             onClick={() => {
@@ -958,7 +958,7 @@ function App() {
               }
             }}
             title={compareMode ? 'Exit compare mode' : 'Select two planets to compare'}
-            className={`control-btn hidden md:inline-flex rounded border px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
+            className={`control-btn hidden md:inline-flex flex-shrink-0 rounded border px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
               compareMode
                 ? 'border-accent-amber bg-accent-amber/10 text-accent-amber'
                 : 'border-border bg-surface text-accent-cyan'
@@ -972,7 +972,7 @@ function App() {
             type="button"
             onClick={() => { playClick(); handleExport(); }}
             title="Download a PNG snapshot of the current sky map"
-            className="control-btn hidden md:inline-flex rounded border border-border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-accent-cyan transition-colors"
+            className="control-btn hidden md:inline-flex flex-shrink-0 rounded border border-border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-accent-cyan transition-colors"
           >
             Export
           </button>
@@ -980,70 +980,74 @@ function App() {
             type="button"
             onClick={() => { playClick(); handleShare(); }}
             title="Copy a shareable link to the current view"
-            className="control-btn hidden md:inline-flex rounded border border-border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-accent-cyan transition-colors"
+            className="control-btn hidden md:inline-flex flex-shrink-0 rounded border border-border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest text-accent-cyan transition-colors"
           >
             Share
           </button>
-          <button
-            type="button"
-            onClick={() => { playClick(); toggleMusic(); }}
-            title={musicEnabled ? 'Disable ambient music' : 'Enable ambient music'}
-            aria-pressed={musicEnabled}
-            className={`control-btn hidden md:inline-flex items-center gap-1.5 rounded border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
-              musicEnabled
-                ? 'border-accent-cyan text-accent-cyan'
-                : 'border-border text-accent-cyan'
-            }`}
-          >
-            {musicEnabled ? (
-              <span className="music-eq" aria-hidden="true">
-                <span /><span /><span />
-              </span>
-            ) : (
-              <span aria-hidden="true">♪</span>
+          <div className="hidden md:flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { playClick(); toggleMusic(); }}
+              title={musicEnabled ? 'Disable ambient music' : 'Enable ambient music'}
+              aria-pressed={musicEnabled}
+              className={`control-btn inline-flex items-center gap-1.5 rounded border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
+                musicEnabled
+                  ? 'border-accent-cyan text-accent-cyan'
+                  : 'border-border text-accent-cyan'
+              }`}
+            >
+              {musicEnabled ? (
+                <span className="music-eq" aria-hidden="true">
+                  <span /><span /><span />
+                </span>
+              ) : (
+                <span aria-hidden="true">♪</span>
+              )}
+              <span>{musicEnabled ? 'On' : 'Off'}</span>
+            </button>
+            {musicEnabled && (
+              <input
+                type="range"
+                min={0}
+                max={0.4}
+                step={0.01}
+                value={musicVolume}
+                onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                title="Music volume"
+                aria-label="Music volume"
+                className="music-volume-slider w-16"
+              />
             )}
-            <span>{musicEnabled ? 'On' : 'Off'}</span>
-          </button>
-          {musicEnabled && (
-            <input
-              type="range"
-              min={0}
-              max={0.4}
-              step={0.01}
-              value={musicVolume}
-              onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-              title="Music volume"
-              aria-label="Music volume"
-              className="hidden md:inline-block music-volume-slider"
-            />
-          )}
-          <button
-            type="button"
-            onClick={() => { playClick(); toggleSfx(); }}
-            title={sfxEnabled ? 'Disable sound effects' : 'Enable sound effects'}
-            aria-pressed={sfxEnabled}
-            className={`control-btn hidden md:inline-flex items-center gap-1.5 rounded border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
-              sfxEnabled
-                ? 'border-accent-cyan text-accent-cyan'
-                : 'border-border text-accent-cyan'
-            }`}
-          >
-            <span aria-hidden="true">{sfxEnabled ? '🔊' : '♪'}</span>
-            <span>SFX {sfxEnabled ? 'On' : 'Off'}</span>
-          </button>
-          {sfxEnabled && (
-            <input
-              type="range"
-              min={0}
-              max={0.7}
-              step={0.01}
-              value={sfxVolume}
-              onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
-              title="SFX volume"
-              aria-label="SFX volume"
-              className="hidden md:inline-block music-volume-slider"
-            />
-          )}
+          </div>
+          <div className="hidden md:flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { playClick(); toggleSfx(); }}
+              title={sfxEnabled ? 'Disable sound effects' : 'Enable sound effects'}
+              aria-pressed={sfxEnabled}
+              className={`control-btn inline-flex items-center gap-1.5 rounded border bg-surface px-3 py-1.5 font-display text-xs font-bold uppercase tracking-widest transition-colors ${
+                sfxEnabled
+                  ? 'border-accent-cyan text-accent-cyan'
+                  : 'border-border text-accent-cyan'
+              }`}
+            >
+              <span aria-hidden="true">{sfxEnabled ? '🔊' : '♪'}</span>
+              <span>SFX {sfxEnabled ? 'On' : 'Off'}</span>
+            </button>
+            {sfxEnabled && (
+              <input
+                type="range"
+                min={0}
+                max={0.7}
+                step={0.01}
+                value={sfxVolume}
+                onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                title="SFX volume"
+                aria-label="SFX volume"
+                className="music-volume-slider w-16"
+              />
+            )}
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -1058,7 +1062,7 @@ function App() {
               starMapRef.current?.focusPlanet(planet);
             }}
             title="Jump to a random planet"
-            className="hidden md:inline-flex ml-2 cursor-pointer font-display text-[11px] font-bold uppercase tracking-widest text-text-secondary transition-colors hover:text-accent-cyan hover:underline"
+            className="hidden md:inline-flex flex-shrink-0 ml-2 cursor-pointer font-display text-[11px] font-bold uppercase tracking-widest text-text-secondary transition-colors hover:text-accent-cyan hover:underline"
           >
             ⚄ Random
           </button>
