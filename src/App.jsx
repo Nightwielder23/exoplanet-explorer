@@ -343,6 +343,8 @@ function App() {
   const [sfxEnabled, setSfxEnabled] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.15);
   const [sfxVolume, setSfxVolume] = useState(0.35);
+  const [musicMenuOpen, setMusicMenuOpen] = useState(false);
+  const [sfxMenuOpen, setSfxMenuOpen] = useState(false);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -392,6 +394,16 @@ function App() {
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = musicVolume;
   }, [musicVolume]);
+
+  useEffect(() => {
+    if (!musicMenuOpen && !sfxMenuOpen) return;
+    const handler = () => {
+      setMusicMenuOpen(false);
+      setSfxMenuOpen(false);
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [musicMenuOpen, sfxMenuOpen]);
 
   const toggleMusic = useCallback(() => {
     console.log('[Music] Button clicked, musicEnabled:', musicEnabled, 'audioRef:', audioRef.current);
@@ -1086,6 +1098,113 @@ function App() {
           </div>
         </div>
       </header>
+
+      {isMobileDevice && (
+        <>
+          <div
+            className="fixed md:hidden flex items-center gap-2 bg-surface border border-border rounded-full px-2 py-1"
+            style={{
+              top: 44,
+              right: 4,
+              zIndex: 200,
+              visibility: (loadingOverlayVisible || showPortraitWarning || portraitFadingOut) ? 'hidden' : 'visible',
+            }}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                playClick();
+                setMusicMenuOpen((v) => !v);
+                setSfxMenuOpen(false);
+              }}
+              aria-label="Music settings"
+              aria-expanded={musicMenuOpen}
+              className={`flex h-7 w-7 items-center justify-center rounded-full font-display text-sm ${
+                musicEnabled ? 'text-accent-cyan' : 'text-text-secondary'
+              }`}
+            >
+              ♪
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                playClick();
+                setSfxMenuOpen((v) => !v);
+                setMusicMenuOpen(false);
+              }}
+              aria-label="SFX settings"
+              aria-expanded={sfxMenuOpen}
+              className={`flex h-7 w-7 items-center justify-center rounded-full font-display text-sm ${
+                sfxEnabled ? 'text-accent-cyan' : 'text-text-secondary'
+              }`}
+            >
+              ♦
+            </button>
+          </div>
+          {musicMenuOpen && !loadingOverlayVisible && !showPortraitWarning && !portraitFadingOut && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="fixed md:hidden bg-surface border border-border rounded-lg p-3 flex flex-col gap-2 min-w-[160px]"
+              style={{ top: 84, right: 4, zIndex: 200 }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-display text-[10px] uppercase tracking-widest text-text-muted">Music</span>
+                <button
+                  type="button"
+                  onClick={() => { playClick(); toggleMusic(); }}
+                  className={`font-display text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border ${
+                    musicEnabled ? 'border-accent-cyan text-accent-cyan' : 'border-border text-text-secondary'
+                  }`}
+                >
+                  {musicEnabled ? 'On' : 'Off'}
+                </button>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={0.4}
+                step={0.01}
+                value={musicVolume}
+                onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                aria-label="Music volume"
+                className="music-volume-slider w-full"
+              />
+            </div>
+          )}
+          {sfxMenuOpen && !loadingOverlayVisible && !showPortraitWarning && !portraitFadingOut && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="fixed md:hidden bg-surface border border-border rounded-lg p-3 flex flex-col gap-2 min-w-[160px]"
+              style={{ top: 84, right: 4, zIndex: 200 }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-display text-[10px] uppercase tracking-widest text-text-muted">SFX</span>
+                <button
+                  type="button"
+                  onClick={() => { playClick(); toggleSfx(); }}
+                  className={`font-display text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border ${
+                    sfxEnabled ? 'border-accent-cyan text-accent-cyan' : 'border-border text-text-secondary'
+                  }`}
+                >
+                  {sfxEnabled ? 'On' : 'Off'}
+                </button>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={0.7}
+                step={0.01}
+                value={sfxVolume}
+                onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                aria-label="SFX volume"
+                className="music-volume-slider w-full"
+              />
+            </div>
+          )}
+        </>
+      )}
 
       <main className="relative flex w-full h-full flex-1 items-center justify-center">
         {!loading && error && (
