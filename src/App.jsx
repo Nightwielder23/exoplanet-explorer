@@ -465,6 +465,7 @@ function App() {
     } else {
       wasRandomRef.current = false;
       setSelectedPlanet(planet);
+      starMapRef.current?.focusPlanet(planet);
     }
   };
 
@@ -878,7 +879,7 @@ function App() {
   return (
     <div className="flex h-screen w-screen flex-col font-body text-text-primary" style={{ backgroundColor: '#000306' }} onClick={() => { userHasInteractedRef.current = true; forceUpdate(n => n + 1); }}>
       {isMobileDevice && showPortraitWarning && (
-        <div style={{
+        <div id="portrait-overlay" style={{
           position: 'fixed', inset: 0,
           zIndex: 9998,
           opacity: portraitFadingOut ? 0 : 1,
@@ -1344,6 +1345,7 @@ function App() {
         const isPortraitMobile = (window.innerWidth < 768 || /iPhone|iPad|Android/i.test(navigator.userAgent)) && window.innerHeight > window.innerWidth
         return (
       <div
+        id="loading-screen"
         style={{
           position: 'fixed',
           inset: 0,

@@ -680,10 +680,9 @@ const StarMap = forwardRef(function StarMap(
 
         const fontSize = 12 / t.k;
         ctx.font = `${fontSize}px IBM Plex Mono`;
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.globalAlpha = 1;
-        const offset = 15 / t.k;
         for (const constellation of CONSTELLATIONS) {
           const coords = constellation.coords;
           if (!coords || coords.length === 0) continue;
@@ -695,15 +694,28 @@ const StarMap = forwardRef(function StarMap(
           }
           const cRa = sumRa / coords.length;
           const cDec = sumDec / coords.length;
-          const lx = xScale(cRa) + offset;
-          const ly = yScale(cDec) + offset;
+          const centroidX = xScale(cRa);
+          const centroidY = yScale(cDec);
+          const lx = centroidX + 25 / t.k;
+          const ly = centroidY - 10 / t.k;
+
+          ctx.save();
+          ctx.strokeStyle = '#4a7a9b';
+          ctx.lineWidth = 0.5 / t.k;
+          ctx.globalAlpha = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(centroidX, centroidY);
+          ctx.lineTo(centroidX + 15 / t.k, centroidY);
+          ctx.stroke();
+          ctx.restore();
+
           const metrics = ctx.measureText(constellation.name);
           const padX = 6 / t.k;
           const padY = 3 / t.k;
           const bgW = metrics.width + padX * 2;
           const bgH = fontSize + padY * 2;
           ctx.fillStyle = 'rgba(0, 10, 25, 0.85)';
-          ctx.fillRect(lx - bgW / 2, ly - bgH / 2, bgW, bgH);
+          ctx.fillRect(lx - padX, ly - bgH / 2, bgW, bgH);
           ctx.fillStyle = '#aaddff';
           ctx.fillText(constellation.name, lx, ly);
         }
@@ -849,11 +861,7 @@ const StarMap = forwardRef(function StarMap(
         redraw();
       }
       if (!draggingRef.current && overlayRef.current) {
-        if (compareModeRef.current) {
-          overlayRef.current.style.cursor = 'crosshair';
-        } else {
-          overlayRef.current.style.cursor = nearest ? 'crosshair' : 'grab';
-        }
+        overlayRef.current.style.cursor = nearest ? 'pointer' : 'grab';
       }
       if (nearest) {
         tooltip
@@ -873,7 +881,7 @@ const StarMap = forwardRef(function StarMap(
       }
       tooltip.style('opacity', 0);
       if (!draggingRef.current && overlayRef.current) {
-        overlayRef.current.style.cursor = compareModeRef.current ? 'crosshair' : 'grab';
+        overlayRef.current.style.cursor = 'grab';
       }
     };
 
@@ -931,11 +939,7 @@ const StarMap = forwardRef(function StarMap(
         setTimeout(() => {
           draggingRef.current = false;
           if (overlayRef.current) {
-            if (compareModeRef.current) {
-              overlayRef.current.style.cursor = 'crosshair';
-            } else {
-              overlayRef.current.style.cursor = hoveredPlanetRef.current ? 'crosshair' : 'grab';
-            }
+            overlayRef.current.style.cursor = hoveredPlanetRef.current ? 'pointer' : 'grab';
           }
         }, 50);
       });
@@ -1165,12 +1169,8 @@ const StarMap = forwardRef(function StarMap(
 
   useEffect(() => {
     compareModeRef.current = compareMode;
-    if (overlayRef.current) {
-      if (compareMode) {
-        overlayRef.current.style.cursor = 'crosshair';
-      } else if (!hoveredPlanetRef.current && !draggingRef.current) {
-        overlayRef.current.style.cursor = 'grab';
-      }
+    if (overlayRef.current && !hoveredPlanetRef.current && !draggingRef.current) {
+      overlayRef.current.style.cursor = 'grab';
     }
     redrawRef.current?.();
   }, [compareMode]);
@@ -1368,45 +1368,33 @@ const StarMap = forwardRef(function StarMap(
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const header = document.getElementById('app-header');
     const overlay = overlayRef.current;
     if (!overlay) return;
 
     const el = document.createElement('div');
-    el.style.position = 'fixed';
-    el.style.right = '0px';
-    el.style.left = 'auto';
-    el.style.background = 'rgba(10, 22, 40, 0.95)';
-    el.style.border = '1px solid #1a3a6b';
-    el.style.borderTop = 'none';
-    el.style.borderRight = 'none';
-    el.style.borderRadius = '0 0 0 6px';
-    el.style.color = '#7ba7c9';
-    el.style.fontFamily = 'IBM Plex Mono, monospace';
-    el.style.fontSize = '11px';
-    el.style.padding = '4px 10px';
-    el.style.zIndex = '10';
-    el.style.pointerEvents = 'none';
-    el.style.display = 'none';
+    el.style.cssText = 'position:fixed !important;top:0px;left:0px;background:rgba(10,22,40,0.95);color:#7ba7c9;padding:4px 10px;font-family:IBM Plex Mono,monospace;font-size:11px;border:1px solid #1a3a6b;border-top:none;border-left:none;border-radius:0 0 6px 0;z-index:99999 !important;pointer-events:none;display:none;white-space:nowrap';
     document.body.appendChild(el);
     coordDisplayRef.current = el;
 
     const updatePosition = () => {
-      const headerBottom = header
-        ? header.getBoundingClientRect().bottom
-        : 0;
-      el.style.top = `${headerBottom}px`;
-      el.style.right = '0px';
-      el.style.left = 'auto';
+      const header = document.getElementById('app-header');
+      const headerBottom = header ? header.getBoundingClientRect().bottom : 70;
+      console.log('[Coords] headerBottom:', headerBottom);
+      el.style.setProperty('top', headerBottom + 'px', 'important');
+      el.style.setProperty('left', '0px', 'important');
+      el.style.setProperty('z-index', '99999', 'important');
     };
-    updatePosition();
+    const initialPositionTimer = setTimeout(updatePosition, 1000);
     window.addEventListener('resize', updatePosition);
 
+    const headerEl = document.getElementById('app-header');
+    let headerObserver = null;
+    if (headerEl) {
+      headerObserver = new ResizeObserver(updatePosition);
+      headerObserver.observe(headerEl);
+    }
+
     const updateFromPoint = (clientX, clientY) => {
-      if (sidebarOpenRef.current) {
-        el.style.display = 'none';
-        return;
-      }
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -1457,6 +1445,8 @@ const StarMap = forwardRef(function StarMap(
       overlay.removeEventListener('touchend', handleLeave);
       overlay.removeEventListener('touchcancel', handleLeave);
       window.removeEventListener('resize', updatePosition);
+      clearTimeout(initialPositionTimer);
+      if (headerObserver) headerObserver.disconnect();
       if (el.parentNode) el.parentNode.removeChild(el);
       if (coordDisplayRef.current === el) coordDisplayRef.current = null;
     };

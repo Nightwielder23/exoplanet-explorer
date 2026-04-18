@@ -246,7 +246,7 @@ function FilterPanel({
         }`}
       >
         <div className="relative">
-          <div className="flex max-h-[75vh] md:h-[560px] md:max-h-none w-full md:w-[220px] flex-col border-t md:border-t-0 md:border-r border-border bg-surface p-4 shadow-2xl">
+          <div className="flex max-h-[75vh] md:h-[560px] md:max-h-none w-full md:w-[220px] flex-col border-t md:border-t-0 md:border-r border-border bg-surface p-4 shadow-2xl md:rounded-r-lg">
           <h2 className="mb-4 font-display text-sm font-bold uppercase tracking-widest text-accent-cyan">
             Filters
           </h2>
@@ -363,7 +363,7 @@ function FilterPanel({
           <button
             type="button"
             onClick={() => { playOpen(); onToggle(); }}
-            className="absolute bottom-auto left-full top-1/2 hidden h-24 w-8 -translate-y-1/2 items-center justify-center border border-l-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated md:flex"
+            className="absolute bottom-auto left-full top-1/2 hidden h-24 w-8 -translate-y-1/2 items-center justify-center border border-l-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated md:flex rounded-r-lg"
             aria-label={isOpen ? 'Collapse filters' : 'Expand filters'}
           >
             <span className="block rotate-90 whitespace-nowrap font-display text-xs font-bold uppercase tracking-widest">

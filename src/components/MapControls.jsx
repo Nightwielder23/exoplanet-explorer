@@ -80,13 +80,13 @@ function MapControls({
 
   return (
     <div
-      className={`fixed bottom-4 left-0 z-30 hidden md:block ${
-        isOpen ? 'translate-x-0' : '-translate-x-[200px]'
+      className={`fixed top-24 right-0 z-30 hidden md:block ${
+        isOpen ? 'translate-x-0' : 'translate-x-[200px]'
       }`}
       style={{ transition: hasMounted.current ? 'all 0.3s ease' : 'none' }}
     >
       <div className="relative">
-        <div className="w-[200px] rounded-r border border-l-0 border-border bg-surface/90 p-3 shadow-2xl backdrop-blur">
+        <div className="w-[200px] rounded-l border border-r-0 border-border bg-surface/90 p-3 shadow-2xl backdrop-blur">
           <div className="flex overflow-hidden rounded border border-border">
             <ToggleButton
               active={colorMode === 'type'}
@@ -151,7 +151,7 @@ function MapControls({
         <button
           type="button"
           onClick={() => { playOpen(); onToggle(); }}
-          className="absolute left-full top-1/2 flex h-24 w-8 -translate-y-1/2 items-center justify-center border border-l-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated"
+          className="absolute right-full top-1/2 flex h-24 w-8 -translate-y-1/2 items-center justify-center border border-r-0 border-border bg-surface text-accent-cyan transition-colors hover:bg-surface-elevated"
           aria-label={isOpen ? 'Collapse controls' : 'Expand controls'}
         >
           <span className="block rotate-90 whitespace-nowrap font-display text-xs font-bold uppercase tracking-widest">
