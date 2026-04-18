@@ -4,7 +4,6 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
 } from 'react';
 import * as d3 from 'd3';
 import { getPlanetColor, getHabitabilityZone } from '../utils/planetClassifier';
@@ -33,17 +32,9 @@ function getStarConfig() {
         spawnPerFrame: 1,
         radiusMin: 0.4,
         radiusMax: 1.2,
-        highIntensity: { fadeIn: [50, 80], hold: [120, 200], fadeOut: [50, 80] },
-        mediumIntensity: {
-          fadeIn: [80, 130],
-          hold: [200, 350],
-          fadeOut: [80, 130],
-        },
-        lowIntensity: {
-          fadeIn: [120, 200],
-          hold: [350, 550],
-          fadeOut: [120, 200],
-        },
+        highIntensity: { baseCycle: [120, 200] },
+        mediumIntensity: { baseCycle: [200, 350] },
+        lowIntensity: { baseCycle: [350, 600] },
       }
     : {
         isMobile: false,
@@ -51,9 +42,9 @@ function getStarConfig() {
         spawnPerFrame: 5,
         radiusMin: 0.3,
         radiusMax: 0.9,
-        highIntensity: { fadeIn: [8, 15], hold: [25, 45], fadeOut: [8, 18] },
-        mediumIntensity: { fadeIn: [15, 25], hold: [50, 80], fadeOut: [15, 25] },
-        lowIntensity: { fadeIn: [25, 40], hold: [90, 150], fadeOut: [25, 40] },
+        highIntensity: { baseCycle: [60, 100] },
+        mediumIntensity: { baseCycle: [100, 180] },
+        lowIntensity: { baseCycle: [180, 300] },
       };
 }
 
@@ -108,9 +99,6 @@ const StarMap = forwardRef(function StarMap(
         lowIntensity: { fadeIn: [25, 40], hold: [90, 150], fadeOut: [25, 40] },
       };
 
-  // eslint-disable-next-line no-console
-  console.log('[StarMap] init isMobile:', isMobile, window.innerWidth);
-
   const starConfigRef = useRef(null);
 
   const containerRef = useRef(null);
@@ -122,11 +110,12 @@ const StarMap = forwardRef(function StarMap(
   const sizeRef = useRef({ width: 0, height: 0 });
   const transformRef = useRef(d3.zoomIdentity);
   const initialTransformRef = useRef(null);
+  const savedTransformRef = useRef(null);
   const draggingRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const lastRedrawTimeRef = useRef(0);
   const interactingRef = useRef(false);
   const hoveredPlanetRef = useRef(null);
-  const [cursorMode, setCursorMode] = useState('grab');
   const planetsRef = useRef([]);
   const colorByPlanetRef = useRef(new Map());
   const hzByPlanetRef = useRef(new Map());
@@ -234,12 +223,13 @@ const StarMap = forwardRef(function StarMap(
         bucket = cfg.lowIntensity;
       }
       const maxOpacity = 0.7 + Math.random() * 0.3;
+      const baseCycle = sampleRange(bucket.baseCycle);
       return {
         color,
         twinkleIntensity,
-        inDur: sampleRange(bucket.fadeIn),
-        holdDur: sampleRange(bucket.hold),
-        outDur: sampleRange(bucket.fadeOut),
+        inDur: baseCycle * 0.3,
+        holdDur: baseCycle * 0.4,
+        outDur: baseCycle * 0.3,
         r:
           cfg.radiusMin +
           Math.random() * (cfg.radiusMax - cfg.radiusMin),
@@ -247,7 +237,6 @@ const StarMap = forwardRef(function StarMap(
       };
     };
 
-    let spawnLogCount = 0;
     const spawnStar = (randomPhase = false) => {
       const { width, height } = sizeRef.current;
       if (!width || !height) return null;
@@ -265,18 +254,6 @@ const StarMap = forwardRef(function StarMap(
       } while (!isOut(sx, sy) && tries < 50);
       if (tries >= 50) return null;
       const props = buildStarProps();
-      if (spawnLogCount < 10) {
-        spawnLogCount++;
-        // eslint-disable-next-line no-console
-        console.log(
-          '[spawn] isMobile:',
-          isMobile,
-          'maxStars:',
-          starConfigRef.current.maxStars,
-          'fadeIn:',
-          props.inDur,
-        );
-      }
       let phase = 'in';
       let age = 0;
       if (randomPhase) {
@@ -310,7 +287,7 @@ const StarMap = forwardRef(function StarMap(
       if (!width || !height) return;
       const dpr = Math.min(
         window.devicePixelRatio || 1,
-        window.innerWidth < 768 ? 1.5 : 3,
+        window.innerWidth < 768 ? 1 : 3,
       );
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -331,30 +308,33 @@ const StarMap = forwardRef(function StarMap(
       ctx.translate(t.x, t.y);
       ctx.scale(t.k, t.k);
 
-      const dotR = (isMobile ? 2 : 2.5) / t.k;
+      const dotR =
+        (isMobile && isDragging ? 1.5 : isMobile ? 2 : 2.5) / t.k;
       const hoverR = (isMobile ? 4 : 5) / t.k;
       const lineW = 0.8 / t.k;
 
-      ctx.strokeStyle = '#2a5a9b';
-      ctx.lineWidth = lineW;
-      ctx.globalAlpha = 0.6;
-      ctx.shadowBlur = isMobile ? 0 : 3 / t.k;
-      ctx.shadowColor = '#1a4a8b';
-      for (const dec of DEC_LINES) {
-        const y = yScale(dec);
-        ctx.beginPath();
-        ctx.moveTo(xScale(0), y);
-        ctx.lineTo(xScale(360), y);
-        ctx.stroke();
+      if (!(isMobile && isDragging)) {
+        ctx.strokeStyle = '#2a5a9b';
+        ctx.lineWidth = lineW;
+        ctx.globalAlpha = 0.6;
+        ctx.shadowBlur = isMobile ? 0 : 3 / t.k;
+        ctx.shadowColor = '#1a4a8b';
+        for (const dec of DEC_LINES) {
+          const y = yScale(dec);
+          ctx.beginPath();
+          ctx.moveTo(xScale(0), y);
+          ctx.lineTo(xScale(360), y);
+          ctx.stroke();
+        }
+        for (const ra of RA_LINES) {
+          const x = xScale(ra);
+          ctx.beginPath();
+          ctx.moveTo(x, yScale(90));
+          ctx.lineTo(x, yScale(-90));
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
       }
-      for (const ra of RA_LINES) {
-        const x = xScale(ra);
-        ctx.beginPath();
-        ctx.moveTo(x, yScale(90));
-        ctx.lineTo(x, yScale(-90));
-        ctx.stroke();
-      }
-      ctx.shadowBlur = 0;
 
       const x0 = xScale(-2);
       const x1 = xScale(362);
@@ -645,7 +625,12 @@ const StarMap = forwardRef(function StarMap(
       }
 
       const selected = selectedPlanetRef.current;
-      if (selected && selected.ra != null && selected.dec != null) {
+      if (
+        selected &&
+        selected.ra != null &&
+        selected.dec != null &&
+        !(isMobile && isDragging)
+      ) {
         const color = colors.get(selected) ?? '#3d6080';
         const sx = xScale(selected.ra);
         const sy = yScale(selected.dec);
@@ -733,13 +718,11 @@ const StarMap = forwardRef(function StarMap(
     };
     redrawRef.current = redraw;
 
-    let frameCount = 0;
     const drawStars = () => {
+      if (!starsCanvasRef.current) return;
+      const config = getStarConfig();
+      if (!config) return;
       const sCanvas = starsCanvasRef.current;
-      if (!sCanvas) {
-        starsAnimRafRef.current = requestAnimationFrame(drawStars);
-        return;
-      }
       const { width, height } = sizeRef.current;
       if (!width || !height) {
         starsAnimRafRef.current = requestAnimationFrame(drawStars);
@@ -747,7 +730,7 @@ const StarMap = forwardRef(function StarMap(
       }
       const dpr = Math.min(
         window.devicePixelRatio || 1,
-        window.innerWidth < 768 ? 1.5 : 3,
+        window.innerWidth < 768 ? 1 : 3,
       );
       const sCtx = sCanvas.getContext('2d');
       sCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -756,36 +739,8 @@ const StarMap = forwardRef(function StarMap(
 
       const stars = starsRef.current;
       const b = getBoundary();
-
-      frameCount++;
-      if (frameCount % 120 === 0 && b) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[Stars] alive:',
-          starsRef.current.length,
-          'phases:',
-          starsRef.current.reduce((acc, s) => {
-            acc[s.phase] = (acc[s.phase] || 0) + 1;
-            return acc;
-          }, {}),
-        );
-        // eslint-disable-next-line no-console
-        console.log(
-          '[Stars] maxStars cap:',
-          starConfigRef.current.maxStars,
-          'current alive:',
-          starsRef.current.length,
-        );
-        // eslint-disable-next-line no-console
-        console.log('[Stars] boundary:', {
-          bL: b.bLeft,
-          bR: b.bRight,
-          bT: b.bTop,
-          bB: b.bBottom,
-          screenW: window.innerWidth,
-          screenH: window.innerHeight,
-        });
-      }
+      const maxStars = config.maxStars;
+      const spawnPerFrame = config.spawnPerFrame;
 
       for (let i = stars.length - 1; i >= 0; i--) {
         const s = stars[i];
@@ -823,27 +778,17 @@ const StarMap = forwardRef(function StarMap(
 
       if (!starsInitializedRef.current) {
         starsInitializedRef.current = true;
-        while (stars.length < starConfigRef.current.maxStars) {
+        while (stars.length < maxStars) {
           const s = spawnStar(true);
           if (!s) break;
           stars.push(s);
         }
       }
 
-      if (frameCount % 120 === 0) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[Stars] using maxStars:',
-          starConfigRef.current.maxStars,
-          'innerWidth:',
-          window.innerWidth,
-        );
-      }
-      const frameSpawnLimit = getStarConfig().spawnPerFrame;
       let spawned = 0;
       while (
-        starsRef.current.length < getStarConfig().maxStars &&
-        spawned < frameSpawnLimit
+        starsRef.current.length < maxStars &&
+        spawned < spawnPerFrame
       ) {
         const s = spawnStar(false);
         if (!s) break;
@@ -891,6 +836,10 @@ const StarMap = forwardRef(function StarMap(
     };
 
     const handleMouseMove = (event) => {
+      if (draggingRef.current) {
+        tooltip.style('opacity', 0);
+        return;
+      }
       const rect = overlay.getBoundingClientRect();
       const mx = event.clientX - rect.left;
       const my = event.clientY - rect.top;
@@ -899,11 +848,11 @@ const StarMap = forwardRef(function StarMap(
         hoveredPlanetRef.current = nearest;
         redraw();
       }
-      if (!draggingRef.current) {
+      if (!draggingRef.current && overlayRef.current) {
         if (compareModeRef.current) {
-          setCursorMode('crosshair');
+          overlayRef.current.style.cursor = 'crosshair';
         } else {
-          setCursorMode(nearest ? 'crosshair' : 'grab');
+          overlayRef.current.style.cursor = nearest ? 'crosshair' : 'grab';
         }
       }
       if (nearest) {
@@ -923,8 +872,8 @@ const StarMap = forwardRef(function StarMap(
         redraw();
       }
       tooltip.style('opacity', 0);
-      if (!draggingRef.current) {
-        setCursorMode(compareModeRef.current ? 'crosshair' : 'grab');
+      if (!draggingRef.current && overlayRef.current) {
+        overlayRef.current.style.cursor = compareModeRef.current ? 'crosshair' : 'grab';
       }
     };
 
@@ -954,6 +903,9 @@ const StarMap = forwardRef(function StarMap(
       })
       .on('start', (event) => {
         interactingRef.current = true;
+        if (tooltipRef.current) {
+          tooltipRef.current.style.opacity = '0';
+        }
         if (event.sourceEvent && event.sourceEvent.type === 'mousedown') {
           draggingRef.current = false;
         }
@@ -961,9 +913,14 @@ const StarMap = forwardRef(function StarMap(
       .on('zoom', (event) => {
         if (event.sourceEvent && event.sourceEvent.type === 'mousemove') {
           draggingRef.current = true;
-          setCursorMode('grabbing');
+          if (overlayRef.current) overlayRef.current.style.cursor = 'grabbing';
         }
         transformRef.current = event.transform;
+        if (window.innerWidth < 768) {
+          const now = Date.now();
+          if (now - lastRedrawTimeRef.current < 32) return;
+          lastRedrawTimeRef.current = now;
+        }
         redraw();
         const { width, height } = sizeRef.current;
         onTransformChangeRef.current?.(event.transform, width, height);
@@ -973,10 +930,12 @@ const StarMap = forwardRef(function StarMap(
         redraw();
         setTimeout(() => {
           draggingRef.current = false;
-          if (compareModeRef.current) {
-            setCursorMode('crosshair');
-          } else {
-            setCursorMode(hoveredPlanetRef.current ? 'crosshair' : 'grab');
+          if (overlayRef.current) {
+            if (compareModeRef.current) {
+              overlayRef.current.style.cursor = 'crosshair';
+            } else {
+              overlayRef.current.style.cursor = hoveredPlanetRef.current ? 'crosshair' : 'grab';
+            }
           }
         }, 50);
       });
@@ -1093,7 +1052,7 @@ const StarMap = forwardRef(function StarMap(
       sizeRef.current = { width, height };
       const dpr = Math.min(
         window.devicePixelRatio || 1,
-        window.innerWidth < 768 ? 1.5 : 3,
+        window.innerWidth < 768 ? 1 : 3,
       );
       const canvas = canvasRef.current;
       if (canvas) {
@@ -1177,6 +1136,21 @@ const StarMap = forwardRef(function StarMap(
           .duration(750)
           .call(zoom.transform, target);
       },
+      saveTransform: () => {
+        savedTransformRef.current = transformRef.current;
+      },
+      restoreTransform: () => {
+        const zoom = zoomRef.current;
+        const overlay = overlayRef.current;
+        const target = savedTransformRef.current;
+        if (!zoom || !overlay || !target) return;
+        d3.select(overlay)
+          .transition()
+          .duration(800)
+          .ease(d3.easeCubicInOut)
+          .call(zoom.transform, target);
+        savedTransformRef.current = null;
+      },
     }),
     [],
   );
@@ -1191,10 +1165,12 @@ const StarMap = forwardRef(function StarMap(
 
   useEffect(() => {
     compareModeRef.current = compareMode;
-    if (compareMode) {
-      setCursorMode('crosshair');
-    } else if (!hoveredPlanetRef.current && !draggingRef.current) {
-      setCursorMode('grab');
+    if (overlayRef.current) {
+      if (compareMode) {
+        overlayRef.current.style.cursor = 'crosshair';
+      } else if (!hoveredPlanetRef.current && !draggingRef.current) {
+        overlayRef.current.style.cursor = 'grab';
+      }
     }
     redrawRef.current?.();
   }, [compareMode]);
@@ -1497,7 +1473,7 @@ const StarMap = forwardRef(function StarMap(
           width: '100%',
           height: '100%',
           zIndex: 0,
-          backgroundColor: '#020818',
+          backgroundColor: '#000306',
         }}
       />
       <canvas
@@ -1514,8 +1490,8 @@ const StarMap = forwardRef(function StarMap(
       />
       <div
         ref={overlayRef}
-        className={`absolute inset-0 z-10 cursor-${cursorMode}`}
-        style={{ touchAction: 'none' }}
+        className="absolute inset-0 z-10"
+        style={{ touchAction: 'none', cursor: 'grab' }}
       />
       <div
         ref={tooltipRef}

@@ -3,18 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --background: #000000;
-  --surface: #0a1628;
-  --surface-elevated: #0f2040;
-  --border: #1a3a6b;
+  --background: #000306;
+  --surface: #020810;
+  --surface-elevated: #050f1e;
+  --border: #0c2038;
   --accent-cyan: #00d4ff;
   --accent-teal: #00ff88;
   --accent-amber: #ffaa00;
   --accent-red: #ff4466;
   --accent-purple: #aa44ff;
-  --text-primary: #e8f4fd;
-  --text-secondary: #7ba7c9;
-  --text-muted: #3d6080;
+  --text-primary: #d4ecfa;
+  --text-secondary: #6b97b8;
+  --text-muted: #284060;
 
   color-scheme: dark;
   color: var(--text-primary);
@@ -30,13 +30,13 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #000000;
+  background-color: #000306;
   color: var(--text-primary);
   font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
-  background-color: #000000;
+  background-color: #000306;
   background-image:
     radial-gradient(1px 1px at 1% 5%, rgba(255, 255, 255, 0.9), transparent 2px),
     radial-gradient(0.5px 0.5px at 3% 22%, rgba(220, 235, 255, 0.5), transparent 1px),
@@ -345,19 +345,21 @@ input[type='range'] {
   text-shadow: 0 0 14px rgba(0, 212, 255, 0.9);
 }
 
-@keyframes fadeInOut {
-  0% {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.6);
-  }
+@keyframes loadingStar {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes portraitFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes portraitFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes skeletonProgressFill {
@@ -378,6 +380,40 @@ input[type='range'] {
   animation: skeletonProgressFill 3s ease-out forwards;
 }
 
+@keyframes loadBarFill {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+.load-bar-fill {
+  width: 0%;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 212, 255, 0.4) 0%,
+    #00d4ff 60%,
+    #7ee8ff 100%
+  );
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.9), 0 0 4px rgba(0, 212, 255, 0.7);
+  animation: loadBarFill 3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes titlePulse {
+  0%, 100% {
+    opacity: 0.92;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.title-pulse {
+  animation: titlePulse 2.4s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
 @keyframes toastInOut {
   0% { opacity: 0; transform: translate(-50%, -8px); }
   10% { opacity: 1; transform: translate(-50%, 0); }
@@ -389,15 +425,19 @@ input[type='range'] {
 }
 
 @keyframes countFlash {
-  0% {
-    color: #00d4ff;
-    text-shadow: 0 0 10px rgba(0, 212, 255, 0.9), 0 0 3px rgba(0, 212, 255, 0.7);
-  }
-  100% {
-    color: inherit;
-    text-shadow: none;
-  }
+  0% { color: var(--text-muted); }
+  50% { color: var(--accent-cyan); transform: scale(1.1); }
+  100% { color: var(--text-muted); }
 }
 .count-flash {
-  animation: countFlash 0.6s ease-out;
+  animation: countFlash 0.4s ease-out;
+  display: inline-block;
+}
+
+@keyframes suggestionsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.suggestions-fade-in {
+  animation: suggestionsFadeIn 0.15s ease-out;
 }

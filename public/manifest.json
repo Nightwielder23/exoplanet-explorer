@@ -1,0 +1,12 @@
+{
+  "name": "Exoplanet Explorer",
+  "short_name": "Exoplanets",
+  "description": "Interactive star map of NASA confirmed exoplanets",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020818",
+  "theme_color": "#00d4ff",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

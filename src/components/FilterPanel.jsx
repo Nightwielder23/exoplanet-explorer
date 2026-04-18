@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getPlanetType, getPlanetColor } from '../utils/planetClassifier';
 
 const PLANET_TYPE_OPTIONS = [
   'all',
@@ -85,12 +86,10 @@ function FilterPanel({
     el.classList.remove('count-flash');
     void el.offsetWidth;
     el.classList.add('count-flash');
-    const onEnd = () => {
+    const timer = setTimeout(() => {
       el.classList.remove('count-flash');
-      el.removeEventListener('animationend', onEnd);
-    };
-    el.addEventListener('animationend', onEnd);
-    return () => el.removeEventListener('animationend', onEnd);
+    }, 400);
+    return () => clearTimeout(timer);
   }, [filteredCount]);
 
   const suggestions = useMemo(() => {
@@ -99,8 +98,9 @@ function FilterPanel({
     const out = [];
     for (const p of planets) {
       if (!p.name) continue;
-      if (p.name.toLowerCase().includes(query)) {
-        out.push(p.name);
+      const idx = p.name.toLowerCase().indexOf(query);
+      if (idx !== -1) {
+        out.push({ planet: p, matchStart: idx, matchLen: query.length });
         if (out.length >= 6) break;
       }
     }
@@ -172,22 +172,40 @@ function FilterPanel({
                   className="w-full rounded border border-border bg-surface-elevated px-2 py-1.5 font-body text-sm text-text-primary placeholder:text-text-muted focus:border-accent-cyan focus:outline-none focus:ring-1 focus:ring-accent-cyan"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded border border-border bg-surface-elevated shadow-lg">
-                    {suggestions.map((name) => (
-                      <li key={name}>
-                        <button
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            onFilterChange('searchQuery', name);
-                            setShowSuggestions(false);
-                          }}
-                          className="block w-full truncate px-2 py-1.5 text-left font-body text-sm text-text-primary transition-colors hover:bg-background"
-                        >
-                          {name}
-                        </button>
-                      </li>
-                    ))}
+                  <ul className="suggestions-fade-in absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded border border-border bg-surface-elevated shadow-lg">
+                    {suggestions.map(({ planet: sp, matchStart, matchLen }) => {
+                      const name = sp.name;
+                      const before = name.slice(0, matchStart);
+                      const match = name.slice(matchStart, matchStart + matchLen);
+                      const after = name.slice(matchStart + matchLen);
+                      const type = getPlanetType(sp);
+                      const typeColor = getPlanetColor(sp);
+                      return (
+                        <li key={name}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              onFilterChange('searchQuery', name);
+                              setShowSuggestions(false);
+                            }}
+                            className="group flex w-full items-center justify-between gap-2 border-l-2 border-transparent px-2 py-1.5 text-left font-body text-sm transition-colors hover:border-accent-cyan hover:bg-background"
+                          >
+                            <span className="truncate">
+                              <span className="text-text-secondary">{before}</span>
+                              <span className="text-accent-cyan">{match}</span>
+                              <span className="text-text-secondary">{after}</span>
+                            </span>
+                            <span
+                              className="shrink-0 rounded border px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest"
+                              style={{ color: typeColor, borderColor: typeColor }}
+                            >
+                              {type}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

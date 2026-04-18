@@ -27,7 +27,9 @@ const DEFAULT_FILTERS = {
 };
 
 const TWINKLE_COLORS = ['#ffffff', '#00d4ff', '#00ff88', '#ffaa00', '#aa44ff'];
-const MAX_TWINKLE_STARS = 40;
+const MAX_TWINKLE_STARS = 120;
+
+let portraitDismissedThisSession = false;
 
 function MobileStatsSheet({ planets, onClose, isOpen, onExport, onResetZoom }) {
   const summary = useMemo(() => {
@@ -323,7 +325,6 @@ function App() {
   const [compareMode, setCompareMode] = useState(false);
   const [comparePlanets, setComparePlanets] = useState([]);
   const [showConstellations, setShowConstellations] = useState(false);
-  const [skeletonMounted, setSkeletonMounted] = useState(true);
   const [heatmapMode, setHeatmapMode] = useState(false);
   const [displayCount, setDisplayCount] = useState(0);
   const [controlsOpen, setControlsOpen] = useState(true);
@@ -348,35 +349,27 @@ function App() {
     },
     [],
   );
-  const [portraitWarning, setPortraitWarning] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    if (sessionStorage.getItem('portraitWarningDismissed') === '1') return false;
-    return window.innerWidth < 768 && window.innerHeight > window.innerWidth;
-  });
+  const [showPortraitWarning, setShowPortraitWarning] = useState(false);
+  const [isClosingPortrait, setIsClosingPortrait] = useState(false);
+  const [portraitFadingOut, setPortraitFadingOut] = useState(false);
+  const [loadingOverlayVisible, setLoadingOverlayVisible] = useState(true);
+
+  useEffect(() => {
+    if (!loading) {
+      const isPortrait = window.innerHeight > window.innerWidth
+      const isMobile = window.innerWidth < 768 || /iPhone|iPad|Android/i.test(navigator.userAgent)
+
+      if (isMobile && isPortrait && !portraitDismissedThisSession) {
+        setShowPortraitWarning(true)
+        setLoadingOverlayVisible(false)
+      } else {
+        setTimeout(() => setLoadingOverlayVisible(false), 100)
+      }
+    }
+  }, [loading])
+
   const hasAnimatedCountRef = useRef(false);
   const countAnimationDoneRef = useRef(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const isPortraitMobile =
-        window.innerWidth < 768 && window.innerHeight > window.innerWidth;
-      if (!isPortraitMobile) {
-        setPortraitWarning(false);
-      } else if (sessionStorage.getItem('portraitWarningDismissed') !== '1') {
-        setPortraitWarning(true);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (loading) setSkeletonMounted(true);
-  }, [loading]);
 
   const handlePlanetClick = (planet) => {
     if (compareMode) {
@@ -388,6 +381,7 @@ function App() {
         return [...prev, planet];
       });
     } else {
+      wasRandomRef.current = false;
       setSelectedPlanet(planet);
     }
   };
@@ -490,21 +484,28 @@ function App() {
   const resetZoomRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const starMapRef = useRef(null);
+  const wasRandomRef = useRef(false);
   const twinkleContainerRef = useRef(null);
   const twinkleStarsRef = useRef(new Set());
+  const portraitTwinkleContainerRef = useRef(null);
+  const portraitTwinkleStarsRef = useRef(new Set());
 
   useEffect(() => {
     if (!loading) return;
     const container = twinkleContainerRef.current;
     if (!container) return;
 
-    const spawn = () => {
+    let cancelled = false;
+
+    const spawn = (withDelay) => {
+      if (cancelled) return;
       if (twinkleStarsRef.current.size >= MAX_TWINKLE_STARS) return;
       const star = document.createElement('div');
       const size = 1 + Math.random() * 3;
       const color =
         TWINKLE_COLORS[Math.floor(Math.random() * TWINKLE_COLORS.length)];
-      const duration = 0.8 + Math.random() * 1.7;
+      const duration = 2.5 + Math.random() * 2;
+      const delay = withDelay ? -Math.random() * duration : 0;
       star.style.position = 'absolute';
       star.style.left = `${Math.random() * 100}%`;
       star.style.top = `${Math.random() * 100}%`;
@@ -515,20 +516,23 @@ function App() {
       star.style.boxShadow = `0 0 ${size * 2}px ${color}`;
       star.style.opacity = '0';
       star.style.pointerEvents = 'none';
-      star.style.animation = `fadeInOut ${duration}s ease-in-out forwards`;
+      star.style.animation = `loadingStar ${duration}s ease-in-out ${delay}s forwards`;
       const handleEnd = () => {
+        star.removeEventListener('animationend', handleEnd);
         twinkleStarsRef.current.delete(star);
         star.remove();
+        spawn(false);
       };
       star.addEventListener('animationend', handleEnd);
       twinkleStarsRef.current.add(star);
       container.appendChild(star);
     };
 
-    const intervalId = window.setInterval(spawn, 200);
-    spawn();
+    for (let i = 0; i < 60; i += 1) spawn(true);
+    const intervalId = window.setInterval(() => spawn(false), 200);
 
     return () => {
+      cancelled = true;
       window.clearInterval(intervalId);
       for (const star of twinkleStarsRef.current) {
         star.remove();
@@ -536,6 +540,57 @@ function App() {
       twinkleStarsRef.current.clear();
     };
   }, [loading]);
+
+  useEffect(() => {
+    if (!showPortraitWarning) return;
+    const container = portraitTwinkleContainerRef.current;
+    if (!container) return;
+
+    let cancelled = false;
+
+    const spawn = (withDelay) => {
+      if (cancelled) return;
+      if (portraitTwinkleStarsRef.current.size >= MAX_TWINKLE_STARS) return;
+      const star = document.createElement('div');
+      const size = 1 + Math.random() * 3;
+      const color =
+        TWINKLE_COLORS[Math.floor(Math.random() * TWINKLE_COLORS.length)];
+      const duration = 2.5 + Math.random() * 2;
+      const delay = withDelay ? -Math.random() * duration : 0;
+      star.style.position = 'absolute';
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 100}%`;
+      star.style.width = `${size}px`;
+      star.style.height = `${size}px`;
+      star.style.borderRadius = '50%';
+      star.style.backgroundColor = color;
+      star.style.boxShadow = `0 0 ${size * 2}px ${color}`;
+      star.style.opacity = '0';
+      star.style.pointerEvents = 'none';
+      star.style.animation = `loadingStar ${duration}s ease-in-out ${delay}s forwards`;
+      const handleEnd = () => {
+        star.removeEventListener('animationend', handleEnd);
+        portraitTwinkleStarsRef.current.delete(star);
+        star.remove();
+        spawn(false);
+      };
+      star.addEventListener('animationend', handleEnd);
+      portraitTwinkleStarsRef.current.add(star);
+      container.appendChild(star);
+    };
+
+    for (let i = 0; i < 60; i += 1) spawn(true);
+    const intervalId = window.setInterval(() => spawn(false), 200);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      for (const star of portraitTwinkleStarsRef.current) {
+        star.remove();
+      }
+      portraitTwinkleStarsRef.current.clear();
+    };
+  }, [showPortraitWarning]);
 
   useEffect(() => {
     if (!data || data.length === 0) return;
@@ -698,9 +753,89 @@ function App() {
     }
   }, [filteredPlanets.length]);
 
+  const isMobileDevice = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+  const getErrorInfo = (error) => {
+    const status = error?.response?.status
+    const message = error?.message?.toLowerCase() || ''
+    const code = status ? String(status) : 'ERR'
+
+    if (status === 502 || status === 503 || status === 504) {
+      return { code, title: "NASA's servers are down", detail: "The NASA Exoplanet Archive is temporarily unavailable. This happens occasionally and usually resolves within a few minutes. Try refreshing." }
+    }
+    if (status === 500) {
+      return { code, title: "Server error", detail: "NASA's archive server encountered an internal error. This is on their end, not yours. Try again in a few minutes." }
+    }
+    if (status === 404) {
+      return { code, title: "Endpoint not found", detail: "The NASA archive API endpoint could not be found. The URL may have changed. Please report this." }
+    }
+    if (status === 403) {
+      return { code, title: "Access denied", detail: "The NASA archive refused the request. This may be a temporary block. Try again shortly." }
+    }
+    if (status === 429) {
+      return { code, title: "Rate limited", detail: "Too many requests were made to NASA's archive. Wait a minute then try refreshing." }
+    }
+    if (status === 401) {
+      return { code, title: "Unauthorized", detail: "The request was rejected due to missing credentials. This is a configuration issue." }
+    }
+    if (!navigator.onLine || message.includes('network')) {
+      return { code: 'ERR', title: "No internet connection", detail: "You appear to be offline. Check your connection and try refreshing the page." }
+    }
+    if (message.includes('timeout') || message.includes('etimedout')) {
+      return { code: 'ERR', title: "Request timed out", detail: "NASA's archive took too long to respond. Their servers may be busy. Try refreshing." }
+    }
+    if (message.includes('cors')) {
+      return { code: 'ERR', title: "Connection blocked", detail: "A CORS error prevented the request. This is likely a configuration issue with the proxy." }
+    }
+    if (message.includes('econnrefused') || message.includes('enotfound')) {
+      return { code: 'ERR', title: "Could not connect", detail: "The connection to NASA's archive was refused. Check your internet and try again." }
+    }
+    return { code: status ? String(status) : 'ERR', title: "Something went wrong", detail: error?.message || "An unexpected error occurred. Try refreshing the page." }
+  }
+
   return (
-    <div className="flex h-screen w-screen flex-col font-body text-text-primary">
-      <header id="app-header" className="header-scan-bar relative z-[300] flex items-center justify-between border-b border-border bg-surface px-3 py-2 md:px-6 md:py-4">
+    <div className="flex h-screen w-screen flex-col font-body text-text-primary" style={{ backgroundColor: '#000306' }}>
+      {isMobileDevice && showPortraitWarning && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          zIndex: 9998,
+          opacity: portraitFadingOut ? 0 : 1,
+          transition: portraitFadingOut ? 'opacity 0.4s ease-out' : 'none',
+          pointerEvents: showPortraitWarning ? 'all' : 'none',
+          background: 'rgba(0,0,0,0.97)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          textAlign: 'center', padding: '2rem',
+        }}>
+          <div
+            ref={portraitTwinkleContainerRef}
+            className="absolute inset-0 overflow-hidden pointer-events-none z-0"
+          />
+          <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem', color: '#00d4ff' }}>↻</div>
+            <h1 style={{ fontFamily: 'Orbitron', color: '#00d4ff', fontSize: '1.5rem', letterSpacing: '0.2em', marginBottom: '1rem', textShadow: '0 0 20px rgba(0,212,255,0.8)' }}>
+              ROTATE DEVICE
+            </h1>
+            <p style={{ fontFamily: 'IBM Plex Mono', color: '#7ba7c9', fontSize: '0.875rem', marginBottom: '2rem', maxWidth: '280px', lineHeight: '1.6' }}>
+              Exoplanet Explorer is best viewed in landscape mode
+            </p>
+            <button
+              onClick={() => {
+                portraitDismissedThisSession = true;
+                setPortraitFadingOut(true);
+                window.setTimeout(() => {
+                  setShowPortraitWarning(false);
+                  setPortraitFadingOut(false);
+                }, 400);
+              }}
+              style={{ fontFamily: 'Orbitron', color: '#7ba7c9', border: '1px solid #1a3a6b', background: 'transparent', padding: '0.5rem 1.5rem', fontSize: '0.75rem', cursor: 'pointer', letterSpacing: '0.1em' }}
+            >
+              CONTINUE ANYWAY
+            </button>
+          </div>
+        </div>
+      )}
+      <header id="app-header" className={`header-scan-bar relative z-[300] ${loading ? 'hidden' : 'flex'} items-center justify-between border-b border-border bg-background px-3 py-2 md:px-6 md:py-4`} style={{ backgroundColor: '#060d1a', visibility: loadingOverlayVisible ? 'hidden' : 'visible' }}>
         <div className="flex flex-col">
           <h1
             className="font-display text-base md:text-2xl font-bold tracking-[0.15em] md:tracking-[0.2em] text-accent-cyan"
@@ -771,6 +906,8 @@ function App() {
               const planet = filteredPlanets[idx];
               if (compareMode) exitCompareMode();
               setSelectedPlanet(planet);
+              starMapRef.current?.saveTransform();
+              wasRandomRef.current = true;
               starMapRef.current?.focusPlanet(planet);
             }}
             title="Jump to a random planet"
@@ -799,15 +936,25 @@ function App() {
         </div>
       </header>
 
-      <main className="relative flex w-full h-full flex-1 items-center justify-center">
+      <main className="relative flex w-full h-full flex-1 items-center justify-center" style={{ visibility: loadingOverlayVisible || showPortraitWarning ? 'hidden' : 'visible' }}>
         {!loading && error && (
-          <div className="max-w-md text-center">
-            <p className="mb-2 font-display text-lg uppercase tracking-widest text-accent-red">
-              Connection Error
-            </p>
-            <p className="text-sm text-text-secondary">
-              {error.message || 'Failed to load exoplanet data.'}
-            </p>
+          <div className="flex flex-col items-center justify-center gap-3 text-center max-w-md px-6">
+            {(() => {
+              const { code, title, detail } = getErrorInfo(error)
+              return (
+                <>
+                  <span className="font-display text-6xl font-bold text-accent-red" style={{ textShadow: '0 0 20px rgba(255,68,102,0.5)' }}>{code}</span>
+                  <span className="font-display text-lg uppercase tracking-widest text-accent-red">{title}</span>
+                  <p className="font-body text-sm text-text-secondary leading-relaxed">{detail}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-2 font-display text-xs tracking-widest uppercase border border-accent-red text-accent-red px-6 py-2 hover:bg-accent-red hover:text-background transition-colors duration-200"
+                  >
+                    Refresh
+                  </button>
+                </>
+              )
+            })()}
           </div>
         )}
         {!loading && !error && data && (
@@ -856,7 +1003,7 @@ function App() {
         canvasHeight={canvasSize.height}
       />
 
-      <div className="relative z-40">
+      <div className="relative z-40" style={{ visibility: loadingOverlayVisible ? 'hidden' : 'visible' }}>
         <FilterPanel
           filters={filters}
           onFilterChange={(key, val) =>
@@ -870,7 +1017,7 @@ function App() {
         />
       </div>
 
-      <div className="fixed bottom-4 right-4 z-40 hidden md:flex md:flex-row items-end gap-2">
+      <div className="fixed bottom-4 right-4 z-40 hidden md:flex md:flex-row items-end gap-2" style={{ visibility: loadingOverlayVisible ? 'hidden' : 'visible' }}>
         <button
           type="button"
           onClick={() => starMapRef.current?.resetZoom()}
@@ -914,6 +1061,7 @@ function App() {
         </div>
       </div>
 
+      {!loading && !showPortraitWarning && (
       <div
         className="fixed bottom-0 left-0 right-0 flex items-stretch md:hidden"
         style={{
@@ -966,6 +1114,7 @@ function App() {
           Controls
         </button>
       </div>
+      )}
 
       <MobileStatsSheet
         planets={filteredPlanets}
@@ -988,13 +1137,24 @@ function App() {
         onConstellationsChange={setShowConstellations}
       />
 
-      <PlanetSidebar
-        planet={selectedPlanet}
-        featuredPlanet={featuredPlanet}
-        onClose={() => setSelectedPlanet(null)}
-        data={data ?? []}
-        onSelectPlanet={setSelectedPlanet}
-      />
+      {!loading && selectedPlanet && (
+        <PlanetSidebar
+          planet={selectedPlanet}
+          featuredPlanet={featuredPlanet}
+          onClose={() => {
+            setSelectedPlanet(null);
+            if (wasRandomRef.current) {
+              wasRandomRef.current = false;
+              starMapRef.current?.restoreTransform();
+            }
+          }}
+          data={data ?? []}
+          onSelectPlanet={(planet) => {
+            wasRandomRef.current = false;
+            setSelectedPlanet(planet);
+          }}
+        />
+      )}
 
       {toast && (
         <div
@@ -1023,81 +1183,49 @@ function App() {
 
       <ComparePanel planets={comparePlanets} onClose={exitCompareMode} />
 
-      {skeletonMounted && (
-        <div
-          className={`pointer-events-none fixed inset-0 z-40 overflow-hidden bg-background transition-opacity duration-500 ease-out ${
-            loading ? 'opacity-100' : 'opacity-0'
-          }`}
-          onTransitionEnd={(e) => {
-            if (e.propertyName === 'opacity' && !loading) {
-              setSkeletonMounted(false);
-            }
-          }}
-          aria-hidden={!loading}
-        >
+      {(() => {
+        const isPortraitMobile = (window.innerWidth < 768 || /iPhone|iPad|Android/i.test(navigator.userAgent)) && window.innerHeight > window.innerWidth
+        return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9997,
+          opacity: loadingOverlayVisible ? 1 : 0,
+          transition: isPortraitMobile ? 'none' : 'opacity 0.6s ease-out',
+          pointerEvents: loadingOverlayVisible ? 'all' : 'none',
+          backgroundColor: '#000306',
+        }}
+        aria-hidden={!loadingOverlayVisible}
+      >
           <div ref={twinkleContainerRef} className="absolute inset-0" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
-            <h2
-              className="font-display text-xl font-bold uppercase tracking-[0.3em] text-accent-cyan"
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-6">
+            <h1
+              className="title-pulse font-display text-4xl font-black uppercase tracking-[0.28em] text-accent-cyan sm:text-5xl md:text-6xl"
               style={{
                 textShadow:
-                  '0 0 14px rgba(0, 212, 255, 0.7), 0 0 4px rgba(0, 212, 255, 0.5)',
+                  '0 0 24px rgba(0, 212, 255, 0.9), 0 0 12px rgba(0, 212, 255, 0.7), 0 0 4px rgba(0, 212, 255, 0.5)',
               }}
             >
-              Scanning Exoplanet Archive...
-            </h2>
-            <div className="h-1 w-80 max-w-full overflow-hidden rounded bg-surface-elevated">
-              <div className="skeleton-progress h-full" />
+              Exoplanet Explorer
+            </h1>
+            <p
+              className="font-body text-[11px] uppercase tracking-[0.35em] text-text-secondary sm:text-xs"
+              style={{ fontFamily: 'IBM Plex Mono, monospace' }}
+            >
+              NASA Confirmed Exoplanet Archive
+            </p>
+            <div className="mt-2 h-[3px] w-80 max-w-full overflow-hidden rounded-full bg-surface-elevated">
+              <div className="load-bar-fill h-full rounded-full" />
             </div>
-            <p className="font-body text-xs uppercase tracking-widest text-text-muted">
-              Loading 6,000+ confirmed exoplanets from NASA archive
+            <p className="font-body text-[10px] uppercase tracking-[0.3em] text-text-muted sm:text-xs">
+              Loading 6,000+ confirmed exoplanets
             </p>
           </div>
-        </div>
-      )}
+      </div>
+        )
+      })()}
 
-      {portraitWarning && (
-        <div
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center text-center px-8"
-          style={{ background: 'rgba(0, 0, 0, 0.95)' }}
-        >
-          <div
-            className="font-display text-6xl text-accent-cyan"
-            style={{
-              textShadow:
-                '0 0 20px rgba(0, 212, 255, 0.7), 0 0 6px rgba(0, 212, 255, 0.5)',
-            }}
-            aria-hidden="true"
-          >
-            ↻
-          </div>
-          <h2
-            className="mt-6 font-display text-3xl font-bold uppercase tracking-[0.2em] text-accent-cyan"
-            style={{
-              textShadow:
-                '0 0 14px rgba(0, 212, 255, 0.7), 0 0 4px rgba(0, 212, 255, 0.5)',
-            }}
-          >
-            Rotate Device
-          </h2>
-          <p
-            className="mt-4 max-w-xs font-body text-xs uppercase tracking-widest text-text-secondary"
-            style={{ fontFamily: 'IBM Plex Mono, monospace' }}
-          >
-            Exoplanet Explorer is best viewed in landscape mode
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              sessionStorage.setItem('portraitWarningDismissed', '1');
-              setPortraitWarning(false);
-            }}
-            className="mt-8 rounded border border-border bg-surface px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-text-secondary transition-colors hover:border-accent-cyan hover:text-accent-cyan"
-          >
-            Continue anyway
-          </button>
-        </div>
-      )}
     </div>
   );
 }
