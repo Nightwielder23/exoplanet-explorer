@@ -26,6 +26,19 @@ function StatsPanel({ planets }) {
   const [isOpen, setIsOpen] = useState(false);
   const chartRef = useRef(null);
   const timelineRef = useRef(null);
+  const panelRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('pointerdown', handleClickOutside);
+    }
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
+  }, [isOpen]);
 
   const yearCounts = useMemo(() => {
     const counts = new Map();
@@ -260,7 +273,7 @@ function StatsPanel({ planets }) {
   const isFiltered = planets.length < 6160;
 
   return (
-    <div className="hidden md:block relative">
+    <div ref={panelRef} className="hidden md:block relative">
       <div
         className="absolute bottom-full right-0 mb-2 flex w-80 flex-col justify-end overflow-hidden transition-all duration-300 ease-in-out"
         style={{
