@@ -11,31 +11,31 @@ This project started as a way to build something with the NASA API that actually
 ## Screenshots
 
 ### Full Star Map
-![Full Map](screenshots/FullMap.png)(screenshots/FullMap.png)<br/>
+![Full Map](screenshots/FullMap.png)  
 *6,160+ confirmed exoplanets plotted by celestial coordinates. The dense cluster on the right is the Kepler field.*
 
 ### Zoomed into the Kepler Field
-![Kepler Field Cluster](screenshots/KelperFieldCluster.png)(screenshots/FullMap.png)<br/>
+![Kepler Field Cluster](screenshots/KelperFieldCluster.png)  
 *Over 2,700 planets discovered by the Kepler Space Telescope concentrated in a single patch of sky.*
 
 ### Planet Detail Sidebar
-![Planet Sidebar](screenshots/PlanetSidebar.png)(screenshots/FullMap.png)<br/>
+![Planet Sidebar](screenshots/PlanetSidebar.png)  
 *Full data sheet for any planet including mass, radius, orbital period, discovery method and similar planets.*
 
 ### Density Heatmap
-![Heatmap](screenshots/Heatmap.png)(screenshots/FullMap.png)<br/>
+![Heatmap](screenshots/Heatmap.png)  
 *Kernel density overlay showing where discoveries concentrate. The Kepler field lights up dramatically.*
 
 ### Habitability Mode
-![Planet Habitability](screenshots/Habitability.png)(screenshots/FullMap.png)<br/>
+![Planet Habitability](screenshots/Habitability.png)  
 *Planets colored by equilibrium temperature zone. Green dots are in the optimistic habitable zone.*
 
 ### Planet Comparison
-![Compared Planets](screenshots/PlanetCompare.png)(screenshots/FullMap.png)<br/>
+![Compared Planets](screenshots/PlanetCompare.png)  
 *Side by side comparison with winning stats highlighted in green.*
 
 ### Constellation Overlay
-![Constellations](screenshots/Constellations.png)(screenshots/FullMap.png)<br/>
+![Constellations](screenshots/Constellations.png)  
 *Five major constellations overlaid on the star map.*
 
 ---
